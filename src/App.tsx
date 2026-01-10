@@ -1,0 +1,47 @@
+import React, { Suspense, lazy } from "react";
+import { Navigate, Route, Routes } from "react-router-dom";
+import Shell from "./layout/Shell";
+
+// Lazy-load pages for production-grade code-splitting
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const FrontOffice = lazy(() => import("./pages/FrontOffice"));
+const Appointments = lazy(() => import("./pages/Appointments"));
+const Laboratory = lazy(() => import("./pages/Laboratory/Laboratory"));
+const InternalLabWorks = lazy(() => import("./pages/Laboratory/InternalLabWorks"));
+const ExternalLabWorks = lazy(() => import("./pages/Laboratory/ExternalLabWorks"));
+const Optical = lazy(() => import("./pages/Optical"));
+const Inventory = lazy(() => import("./pages/Inventory"));
+import HumanResources from "./pages/hr/HumanResources";
+import AttendanceEmployees from "./pages/hr/AttendanceEmployees";
+import LeaveManagement from "./pages/hr/LeaveManagement";
+import Payroll from "./pages/hr/Payroll";
+const SalesBilling = lazy(() => import("./pages/SalesBilling"));
+
+function App() {
+  return (
+    <Suspense fallback={<div className="p-6">Loading...</div>}>
+      <Routes>
+        <Route element={<Shell />}>
+          <Route index element={<Navigate to="/dashboard" replace />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/front-office" element={<FrontOffice />} />
+          <Route path="/appointments" element={<Appointments />} />
+          <Route path="/laboratory" element={<Laboratory />} />
+          <Route path="/laboratory/internal" element={<InternalLabWorks />} />
+          <Route path="/laboratory/external" element={<ExternalLabWorks />} />
+          <Route path="/optical" element={<Optical />} />
+          <Route path="/inventory" element={<Inventory />} />
+          <Route path="/hr" element={<HumanResources />} />
+          <Route path="/hr/attendance-employees" element={<AttendanceEmployees />} />
+          <Route path="/hr/leave-management" element={<LeaveManagement />} />
+          <Route path="/hr/payroll" element={<Payroll />} />
+          <Route path="/sales-billing" element={<SalesBilling />} />
+          {/* Fallback */}
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Route>
+      </Routes>
+    </Suspense>
+  );
+}
+
+export default App;

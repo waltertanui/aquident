@@ -1,0 +1,6 @@
+/* This is the CSS input the CLI will compile */
+@import "tailwindcss";
+
+/* Add sources so Tailwind v4 knows where to scan for class names */
+@source "../../index.html";
+@source "../**/*.{html,js,jsx,ts,tsx,vue,svelte}";

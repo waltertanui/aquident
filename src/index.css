@@ -1,0 +1,5 @@
+/* ... existing CSS (if any) ... */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+/* ... existing CSS (if any) ... */
