@@ -2,6 +2,7 @@ import PageHeader from "../../components/PageHeader";
 import Card from "../../ui/Card";
 // Add React state for the form
 import { useState, useEffect } from "react";
+import LabProcedures from "./LabProcedures";
 
 type WorkOrderForm = {
   patientId: string;
@@ -149,6 +150,9 @@ function InternalLabWorks() {
         <div className="text-sm text-gray-600">
           Internal lab queue, specimens, and results overview go here.
         </div>
+
+        {/* Inserted: Lab Procedures selector connected to Internal Lab form */}
+        <LabProcedures onSelect={(name) => updateForm("procedureType", name)} />
 
         {/* Data collection form for internal lab work */}
         <form className="mt-6 space-y-6" onSubmit={handleSubmit}>

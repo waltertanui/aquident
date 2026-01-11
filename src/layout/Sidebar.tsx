@@ -42,6 +42,16 @@ function Sidebar() {
           <span>Front Office</span>
         </NavLink>
 
+        {/* Clinic link moved below Front Office */}
+        <NavLink
+          to="/clinic"
+          className={({ isActive }) =>
+            `${linkClass} ${isActive ? activeClass : ""}`
+          }
+        >
+          <span>Clinic</span>
+        </NavLink>
+
         <NavLink
           to="/appointments"
           className={({ isActive }) =>

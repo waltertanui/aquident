@@ -17,6 +17,9 @@ import LeaveManagement from "./pages/hr/LeaveManagement";
 import Payroll from "./pages/hr/Payroll";
 const SalesBilling = lazy(() => import("./pages/SalesBilling"));
 
+// Add lazy import for Clinic page
+const Clinic = lazy(() => import("./pages/Clinic"));
+
 function App() {
   return (
     <Suspense fallback={<div className="p-6">Loading...</div>}>
@@ -25,6 +28,10 @@ function App() {
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/front-office" element={<FrontOffice />} />
+
+          {/* New: route for Clinic to match Sidebar link */}
+          <Route path="/clinic" element={<Clinic />} />
+
           <Route path="/appointments" element={<Appointments />} />
           <Route path="/laboratory" element={<Laboratory />} />
           <Route path="/laboratory/internal" element={<InternalLabWorks />} />
