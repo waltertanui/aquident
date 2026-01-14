@@ -4,81 +4,74 @@ import Card from "../../ui/Card";
 import { useState, useEffect } from "react";
 import LabProcedures from "./LabProcedures";
 
+
 type WorkOrderForm = {
   patientId: string;
-  appointmentDate: string;
-  procedureType: string;
-  tooth: string;
   clinician: string;
-  inventoryChecked: boolean;
+  lab_procedures: string;
+  lab_type: "Internal" | "External";
+  lab_cost: number;
   notes: string;
 };
+// Add middleware import
+import { listWalkins, updateWalkin, type PatientRecord } from "../../middleware/data";
 
-type MaterialItem = {
-  name: string;
-  quantity: number;
-  unit: string;
-  cost?: number;
-};
 
 function InternalLabWorks() {
-  // REMOVED: workflow steps overview
-  // const steps = [ ... ];  // deleted
-
-  // REMOVED: earlier return block that only showed "Workflow Overview" using `steps`
-  // return ( ... )  // deleted
-
   // Initialize form state
   const [form, setForm] = useState<WorkOrderForm>({
     patientId: "",
-    appointmentDate: "",
-    procedureType: "",
-    tooth: "",
     clinician: "",
-    inventoryChecked: false,
+    lab_procedures: "",
+    lab_type: "Internal",
+    lab_cost: 0,
     notes: "",
   });
 
-  // Dynamic materials list
-  const [materials, setMaterials] = useState<MaterialItem[]>([
-    { name: "", quantity: 1, unit: "" },
-  ]);
-
-  // NEW: receive basic info from front office and prefill form/materials
-  const [frontOfficeInfo, setFrontOfficeInfo] =
-    useState<Partial<WorkOrderForm> & { materials?: MaterialItem[] } | null>(null);
-
-  useEffect(() => {
-    async function fetchFrontOfficeInfo() {
-      try {
-        // TODO: replace with your actual API call to fetch basic info from front office
-        // Example:
-        // const res = await fetch("/api/front-office/basic-info?orderId=...");
-        // const info = await res.json();
-        const info = null; // placeholder
-
-        if (info) {
-          setFrontOfficeInfo(info);
-          setForm((prev) => ({ ...prev, ...info }));
-          if (info.materials?.length) {
-            setMaterials(info.materials);
-          }
-        }
-      } catch (err) {
-        console.error("Failed to fetch front office info", err);
-      }
-    }
-
-    fetchFrontOfficeInfo();
-  }, []);
+  // Lab Queue state
+  const [labPatients, setLabPatients] = useState<PatientRecord[]>([]);
+  const [completedLabPatients, setCompletedLabPatients] = useState<PatientRecord[]>([]);
+  const [selectedPatient, setSelectedPatient] = useState<PatientRecord | null>(null);
 
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
+  async function fetchLabQueue() {
+    try {
+      const allPatients = await listWalkins();
+      // Filter for patients sent to lab
+      const inLab = allPatients.filter(p => p.status === 'lab');
+      setLabPatients(inLab);
+
+      // Filter for completed lab works (status 'completed')
+      // Since we temporarily removed materials, we just show all completed for now.
+      const completedLab = allPatients.filter(p =>
+        p.status === 'completed' && p.lab_procedures && p.lab_procedures.trim().length > 0
+      );
+      setCompletedLabPatients(completedLab);
+    } catch (err) {
+      console.error("Failed to fetch lab queue", err);
+    }
+  }
+
+  useEffect(() => {
+    fetchLabQueue();
+  }, []);
+
+  const handlePatientSelect = (p: PatientRecord) => {
+    setSelectedPatient(p);
+    setForm({
+      patientId: String(p.no),
+      clinician: p.doc_name || "",
+      lab_procedures: p.procedure && p.procedure.length > 0 ? p.procedure.join(', ') : "",
+      lab_type: "Internal",
+      lab_cost: 0,
+      notes: "",
+    });
+  };
+
   // Simple validation
-  // CHANGED: Remove patientId and appointmentDate from required fields
-  const isValid = [form.procedureType, form.clinician]
-    .every((v) => v.trim().length > 0);
+  const isValid = selectedPatient !== null;
 
   // Form helpers
   function updateForm<K extends keyof WorkOrderForm>(
@@ -86,24 +79,6 @@ function InternalLabWorks() {
     value: WorkOrderForm[K]
   ) {
     setForm((prev) => ({ ...prev, [key]: value }));
-  }
-
-  function updateMaterial(
-    index: number,
-    key: keyof MaterialItem,
-    value: string | number
-  ) {
-    setMaterials((prev) =>
-      prev.map((m, i) => (i === index ? { ...m, [key]: value } : m))
-    );
-  }
-
-  function addMaterial() {
-    setMaterials((prev) => [...prev, { name: "", quantity: 1, unit: "" }]);
-  }
-
-  function removeMaterial(index: number) {
-    setMaterials((prev) => prev.filter((_, i) => i !== index));
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -115,26 +90,37 @@ function InternalLabWorks() {
 
     // Payload to send to backend
     const payload = {
-      ...form,
-      materials: materials.filter((m) => m.name.trim()),
+      status: 'completed' as const,
+      lab_procedures: form.lab_procedures,
+      lab_notes: form.notes,
+      lab_type: form.lab_type,
+      lab_cost: Number(form.lab_cost),
     };
 
     try {
-      // TODO: replace with your API call
-      // await fetch("/api/internal-lab-works", { method: "POST", body: JSON.stringify(payload) })
       console.log("Submitting internal lab work order:", payload);
-      setMessage("Internal lab work order saved successfully.");
-      // Optional: reset form
+
+      if (selectedPatient) {
+        await updateWalkin(selectedPatient.no, payload);
+      }
+
+      setMessage("Internal lab work order completed successfully.");
+
+      // Reset form
       setForm({
         patientId: "",
-        appointmentDate: "",
-        procedureType: "",
-        tooth: "",
         clinician: "",
-        inventoryChecked: false,
+        lab_procedures: "",
+        lab_type: "Internal",
+        lab_cost: 0,
         notes: "",
       });
-      setMaterials([{ name: "", quantity: 1, unit: "" }]);
+
+      setSelectedPatient(null);
+
+      // Refresh lists
+      await fetchLabQueue();
+
     } catch (err) {
       console.error(err);
       setMessage("Failed to save order. Please try again.");
@@ -146,181 +132,196 @@ function InternalLabWorks() {
   return (
     <div className="p-6 space-y-6">
       <PageHeader title="Internal Lab Works" action={{ label: "Create Order" }} />
-      <Card>
-        <div className="text-sm text-gray-600">
-          Internal lab queue, specimens, and results overview go here.
+
+      {/* 1. Horizontal Lab Queue Table */}
+      <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+        <h2 className="text-sm font-medium text-slate-700 mb-3">Lab Queue (Select Patient to Process)</h2>
+        <div className="overflow-x-auto border rounded-md">
+          <table className="min-w-full text-sm">
+            <thead className="bg-gray-50">
+              <tr className="text-left">
+                <th className="p-2">NO</th>
+                <th className="p-2">PATIENT</th>
+                <th className="p-2">DOCTOR</th>
+                <th className="p-2">PROCEDURES</th>
+                <th className="p-2">ACTION</th>
+              </tr>
+            </thead>
+            <tbody>
+              {labPatients.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="p-4 text-center text-slate-500">No patients in lab queue.</td>
+                </tr>
+              ) : (
+                labPatients.map((p) => (
+                  <tr
+                    key={p.no}
+                    className={`border-t hover:bg-blue-50 transition-colors cursor-pointer ${selectedPatient?.no === p.no ? 'bg-blue-100' : ''}`}
+                    onClick={() => handlePatientSelect(p)}
+                  >
+                    <td className="p-2">{p.no}</td>
+                    <td className="p-2 font-medium">{p.name}</td>
+                    <td className="p-2">{p.doc_name || '-'}</td>
+                    <td className="p-2">{p.procedure?.join(', ') || '-'}</td>
+                    <td className="p-2">
+                      <button className="text-blue-600 underline">Select</button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
+      </section>
 
-        {/* Inserted: Lab Procedures selector connected to Internal Lab form */}
-        <LabProcedures onSelect={(name) => updateForm("procedureType", name)} />
-
-        {/* Data collection form for internal lab work */}
-        <form className="mt-6 space-y-6" onSubmit={handleSubmit}>
-          <h3 className="text-sm font-medium text-gray-900">Create Internal Work Order</h3>
-
-          {/* REMOVED: Patient ID and Appointment Date/Time inputs (now fetched from front office) */}
-
-          {/* Procedure Details */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-xs text-gray-700">Procedure Type</label>
-              <select
-                value={form.procedureType}
-                onChange={(e) => updateForm("procedureType", e.target.value)}
-                className="mt-1 w-full rounded-md border border-gray-300 px-2 py-1 text-sm bg-white"
-                required
-              >
-                <option value="">Select a procedure</option>
-                <option value="Extraction">Extraction</option>
-                <option value="Crown Preparation">Crown Preparation</option>
-                <option value="Filling">Filling</option>
-                <option value="Root Canal">Root Canal</option>
-                <option value="Cleaning">Cleaning</option>
-                <option value="Other">Other</option>
-              </select>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Main Form Area */}
+        {selectedPatient ? (
+          <Card className="md:col-span-3">
+            <div className="text-sm text-gray-600 mb-4 font-medium p-2 bg-blue-50 border border-blue-200 rounded">
+              Processing work order for: {selectedPatient.name} (ID: {selectedPatient.no})
             </div>
-            <div>
-              <label className="block text-xs text-gray-700">Tooth (optional)</label>
-              <input
-                type="text"
-                value={form.tooth}
-                onChange={(e) => updateForm("tooth", e.target.value)}
-                className="mt-1 w-full rounded-md border border-gray-300 px-2 py-1 text-sm"
-                placeholder="e.g., #12"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-gray-700">Clinician</label>
-              <input
-                type="text"
-                value={form.clinician}
-                onChange={(e) => updateForm("clinician", e.target.value)}
-                className="mt-1 w-full rounded-md border border-gray-300 px-2 py-1 text-sm"
-                placeholder="Dr. Jane Doe"
-                required
-              />
-            </div>
-          </div>
 
-          {/* Inventory Check */}
-          <div className="flex items-center gap-2">
-            <input
-              id="inventoryChecked"
-              type="checkbox"
-              checked={form.inventoryChecked}
-              onChange={(e) => updateForm("inventoryChecked", e.target.checked)}
-              className="h-4 w-4 rounded border-gray-300"
+            <LabProcedures
+              onSelect={(name) => updateForm("lab_procedures", form.lab_procedures ? form.lab_procedures + ", " + name : name)}
+              onTotalChange={(total) => updateForm("lab_cost", total)}
             />
-            <label htmlFor="inventoryChecked" className="text-xs text-gray-700">
-              Inventory checked and materials available
-            </label>
-          </div>
 
-          {/* Materials Used */}
-          <div>
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium text-gray-900">Materials Used</label>
-              <button
-                type="button"
-                onClick={addMaterial}
-                className="text-xs px-2 py-1 rounded-md border border-gray-300 bg-white hover:bg-gray-50"
-              >
-                + Add Material
-              </button>
-            </div>
+            <form className="mt-6 space-y-6" onSubmit={handleSubmit}>
 
-            <div className="mt-3 space-y-3">
-              {materials.map((m, idx) => (
-                <div
-                  key={idx}
-                  className="grid grid-cols-1 md:grid-cols-12 gap-2 items-end"
-                >
-                  <div className="md:col-span-5">
-                    <label className="block text-xs text-gray-700">Name</label>
-                    <input
-                      type="text"
-                      value={m.name}
-                      onChange={(e) => updateMaterial(idx, "name", e.target.value)}
-                      className="mt-1 w-full rounded-md border border-gray-300 px-2 py-1 text-sm"
-                      placeholder="e.g., Anesthetic"
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-xs text-gray-700">Quantity</label>
-                    <input
-                      type="number"
-                      min={0}
-                      value={m.quantity}
-                      onChange={(e) =>
-                        updateMaterial(idx, "quantity", Number(e.target.value))
-                      }
-                      className="mt-1 w-full rounded-md border border-gray-300 px-2 py-1 text-sm"
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-xs text-gray-700">Unit</label>
-                    <input
-                      type="text"
-                      value={m.unit}
-                      onChange={(e) => updateMaterial(idx, "unit", e.target.value)}
-                      className="mt-1 w-full rounded-md border border-gray-300 px-2 py-1 text-sm"
-                      placeholder="ml, pcs, g"
-                    />
-                  </div>
-                  {/* NEW: Cost per material */}
-                  <div className="md:col-span-2">
-                    <label className="block text-xs text-gray-700">Cost</label>
-                    <input
-                      type="number"
-                      min={0}
-                      step="0.01"
-                      value={m.cost ?? 0}
-                      onChange={(e) => updateMaterial(idx, "cost", Number(e.target.value))}
-                      className="mt-1 w-full rounded-md border border-gray-300 px-2 py-1 text-sm"
-                      placeholder="0.00"
-                    />
-                  </div>
-                  <div className="md:col-span-1">
-                    <button
-                      type="button"
-                      onClick={() => removeMaterial(idx)}
-                      className="text-xs px-2 py-1 rounded-md border border-red-200 text-red-700 bg-red-50 hover:bg-red-100 w-full"
-                    >
-                      Remove
-                    </button>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Lab Type */}
+                <div>
+                  <label className="block text-xs text-gray-700 font-medium mb-1">Lab Type</label>
+                  <div className="flex items-center gap-4 mt-1">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="labType"
+                        value="Internal"
+                        checked={form.lab_type === "Internal"}
+                        onChange={() => updateForm("lab_type", "Internal")}
+                        className="w-4 h-4 text-blue-600"
+                      />
+                      <span className="text-sm">Internal</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="labType"
+                        value="External"
+                        checked={form.lab_type === "External"}
+                        onChange={() => updateForm("lab_type", "External")}
+                        className="w-4 h-4 text-blue-600"
+                      />
+                      <span className="text-sm">External</span>
+                    </label>
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
 
-          {/* Notes */}
-          <div>
-            <label className="block text-xs text-gray-700">Notes</label>
-            <textarea
-              value={form.notes}
-              onChange={(e) => updateForm("notes", e.target.value)}
-              className="mt-1 w-full rounded-md border border-gray-300 px-2 py-1 text-sm"
-              rows={3}
-              placeholder="Diagnosis, procedure details, treatment notes..."
-            />
-          </div>
+                {/* Lab Cost Display (Read-only or Hidden if preferred, but showing for clarity as it's auto-calculated) */}
+                <div>
+                  <label className="block text-xs text-gray-700 font-medium mb-1">Lab Cost (Auto-calculated)</label>
+                  <div className="w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-semibold text-slate-700">
+                    Ksh {form.lab_cost.toLocaleString()}
+                  </div>
+                </div>
+              </div>
 
-          {/* Submit */}
-          <div className="flex items-center gap-3">
-            <button
-              type="submit"
-              disabled={!isValid || submitting}
-              className="text-sm px-3 py-1.5 rounded-md bg-blue-600 text-white disabled:bg-gray-300"
-            >
-              {submitting ? "Saving..." : "Save Work Order"}
-            </button>
-            {message && (
-              <span className="text-xs text-gray-600">{message}</span>
-            )}
+              {/* Lab Procedures Text Area (Editable) */}
+              <div>
+                <label className="block text-xs text-gray-700 font-medium mb-1">Lab Procedures</label>
+                <textarea
+                  value={form.lab_procedures}
+                  onChange={(e) => updateForm("lab_procedures", e.target.value)}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                  rows={2}
+                  placeholder="Procedures will appear here when selected above..."
+                />
+              </div>
+
+              {/* Notes */}
+              <div>
+                <label className="block text-xs text-gray-700 font-medium mb-1">Notes</label>
+                <textarea
+                  value={form.notes}
+                  onChange={(e) => updateForm("notes", e.target.value)}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                  rows={3}
+                  placeholder="Diagnosis, procedure details, treatment notes..."
+                />
+              </div>
+
+              {/* Submit */}
+              <div className="flex items-center gap-3">
+                <button
+                  type="submit"
+                  disabled={!isValid || submitting}
+                  className="text-sm px-4 py-2 rounded-md bg-blue-600 text-white disabled:bg-gray-300 hover:bg-blue-700 shadow-sm"
+                >
+                  {submitting ? "Processing..." : "Mark as Completed"}
+                </button>
+                {message && (
+                  <span className="text-xs text-green-600 font-medium">{message}</span>
+                )}
+              </div>
+            </form>
+          </Card>
+        ) : (
+          <div className="md:col-span-3 border border-dashed border-gray-300 rounded-lg p-8 text-center text-gray-500">
+            Select a patient from the queue above to start processing.
           </div>
-        </form>
-      </Card>
+        )}
+      </div>
+
+      {/* 2. Completed Lab Works Table */}
+      <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+        <h2 className="text-sm font-medium text-slate-700 mb-3">Completed Lab Works</h2>
+        <div className="overflow-x-auto border rounded-md">
+          <table className="min-w-full text-sm">
+            <thead className="bg-gray-50">
+              <tr className="text-left">
+                <th className="p-2">NO</th>
+                <th className="p-2">PATIENT</th>
+                <th className="p-2">PROCEDURE</th>
+                <th className="p-2">LAB PROCEDURES</th>
+                <th className="p-2">NOTES</th>
+                <th className="p-2">TYPE</th>
+                <th className="p-2">LAB COST</th>
+                <th className="p-2">STATUS</th>
+              </tr>
+            </thead>
+            <tbody>
+              {completedLabPatients.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="p-4 text-center text-slate-500">No completed lab works.</td>
+                </tr>
+              ) : (
+                completedLabPatients.map((p) => (
+                  <tr key={p.no} className="border-t hover:bg-slate-50">
+                    <td className="p-2">{p.no}</td>
+                    <td className="p-2 font-medium">{p.name}</td>
+                    <td className="p-2 text-gray-500 min-w-[200px]">{p.procedure?.join(', ') || '-'}</td>
+                    <td className="p-2 min-w-[200px]">{p.lab_procedures || '-'}</td>
+                    <td className="p-2 min-w-[200px]">{p.lab_notes || '-'}</td>
+                    <td className="p-2">
+                      <span className={`text-xs px-2 py-1 rounded-full ${p.lab_type === 'Internal' ? 'bg-blue-50 text-blue-700' : 'bg-orange-50 text-orange-700'}`}>
+                        {p.lab_type || 'Internal'}
+                      </span>
+                    </td>
+                    <td className="p-2 font-semibold text-slate-800">
+                      {p.lab_cost?.toLocaleString() || '0'}
+                    </td>
+                    <td className="p-2">
+                      <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs">Completed</span>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
   );
 }

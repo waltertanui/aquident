@@ -105,10 +105,20 @@ const PROCEDURE_CATEGORIES: LabProcedureCategory[] = [
 /* =======================
    Component
 ======================= */
-const LabProcedures: React.FC = () => {
+interface LabProceduresProps {
+  onSelect?: (name: string) => void;
+  onTotalChange?: (total: number) => void;
+}
+
+const LabProcedures: React.FC<LabProceduresProps> = ({ onSelect, onTotalChange }) => {
   const [selected, setSelected] = useState<Record<string, SelectedItem>>({});
 
   const toggleItem = (item: LabProcedureItem) => {
+    // If selecting (not unselecting), notify parent
+    if (!selected[item.id] && onSelect) {
+      onSelect(item.name);
+    }
+
     setSelected(prev => {
       if (prev[item.id]) {
         const copy = { ...prev };
@@ -136,21 +146,28 @@ const LabProcedures: React.FC = () => {
     }));
   };
 
-  const totalPrice = () => {
+  const calculateTotal = (currentSelected: Record<string, SelectedItem>) => {
     let total = 0;
-
     PROCEDURE_CATEGORIES.forEach(category => {
       category.items.forEach(item => {
-        const sel = selected[item.id];
+        const sel = currentSelected[item.id];
         if (!sel) return;
 
         const multiplier = sel.mode === "pair" ? 2 : 1;
         total += item.price * multiplier * sel.units;
       });
     });
-
     return total;
   };
+
+  const totalPrice = () => calculateTotal(selected);
+
+  // Notify parent of total change
+  React.useEffect(() => {
+    if (onTotalChange) {
+      onTotalChange(calculateTotal(selected));
+    }
+  }, [selected, onTotalChange]);
 
   return (
     <div className="max-w-5xl mx-auto p-4 space-y-6">
@@ -168,9 +185,8 @@ const LabProcedures: React.FC = () => {
               return (
                 <div
                   key={item.id}
-                  className={`border rounded-lg p-3 ${
-                    isSelected ? "border-blue-500 bg-blue-50" : "border-gray-200"
-                  }`}
+                  className={`border rounded-lg p-3 ${isSelected ? "border-blue-500 bg-blue-50" : "border-gray-200"
+                    }`}
                 >
                   <div className="flex justify-between items-center">
                     <label className="flex items-center gap-2">

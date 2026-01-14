@@ -1,6 +1,7 @@
 import React, { Suspense, lazy } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import Shell from "./layout/Shell";
+import { getSupabaseClient } from "./lib/supabaseClient";
 
 // Lazy-load pages for production-grade code-splitting
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -21,6 +22,17 @@ const SalesBilling = lazy(() => import("./pages/SalesBilling"));
 const Clinic = lazy(() => import("./pages/Clinic"));
 
 function App() {
+  // New: initialize Supabase on mount (optional)
+  React.useEffect(() => {
+    const sb = getSupabaseClient();
+    sb.auth
+      .getSession()
+      .then(({ data }) => {
+        console.log("Supabase session:", data.session);
+      })
+      .catch(console.error);
+  }, []);
+
   return (
     <Suspense fallback={<div className="p-6">Loading...</div>}>
       <Routes>
@@ -43,6 +55,8 @@ function App() {
           <Route path="/hr/leave-management" element={<LeaveManagement />} />
           <Route path="/hr/payroll" element={<Payroll />} />
           <Route path="/sales-billing" element={<SalesBilling />} />
+
+
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Route>
