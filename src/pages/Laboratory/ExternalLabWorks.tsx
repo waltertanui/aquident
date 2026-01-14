@@ -71,6 +71,7 @@ const DEFAULT_FORM_VALUES: FormData = {
 
 export default function ExternalLabWorks() {
   const [form, setForm] = useState<FormData>(DEFAULT_FORM_VALUES);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const totalUnits = useMemo(
     () => form.items.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0),
@@ -121,12 +122,69 @@ export default function ExternalLabWorks() {
     });
   };
 
+  const generateUUID = () => {
+    // Simple UUID generator for browser environments
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+      return crypto.randomUUID();
+    }
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+      var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  };
+
+  const handleSubmit = async () => {
+    if (!form.doctorName || !form.institution) {
+      alert("Please fill in Doctor Name and Institution");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      // NOTE: patientName and partnerLab are not stored in the external_lab_works table
+      // as per schema requirements.
+      const orderInput: import("../../middleware/data").ExternalLabOrderInput = {
+        id: generateUUID(),
+        doctor_name: form.doctorName,
+        institution: form.institution,
+        expected_date: form.expectedDate || undefined,
+        shipping_method: form.shippingMethod,
+        notes: form.notes,
+        lab_procedures: form.lab_procedures,
+        lab_cost: form.lab_cost,
+        items: form.items,
+        quote: {
+          subtotal: form.lab_cost, // Assuming lab_cost is subtotal for now
+          tax: 0,
+          total: form.lab_cost,
+          status: "pending"
+        },
+        status: "draft",
+      };
+
+      const { createExternalLabOrder } = await import("../../middleware/data");
+      const result = await createExternalLabOrder(orderInput);
+
+      if (result) {
+        alert("Order submitted successfully!");
+        setForm(DEFAULT_FORM_VALUES);
+      } else {
+        alert("Failed to submit order. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error submitting order:", error);
+      alert("An error occurred while submitting the order.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="p-6 space-y-6">
       <PageHeader title="External Lab Works" />
 
       <Card>
-        <form className="space-y-6">
+        <form className="space-y-6" onSubmit={(e) => { e.preventDefault(); handleSubmit(); }}>
           {/* Basic Info */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="space-y-1">
@@ -135,6 +193,7 @@ export default function ExternalLabWorks() {
                 className="w-full border rounded px-3 py-2"
                 value={form.doctorName}
                 onChange={e => updateForm({ doctorName: e.target.value })}
+                required
               />
             </div>
 
@@ -144,6 +203,7 @@ export default function ExternalLabWorks() {
                 className="w-full border rounded px-3 py-2"
                 value={form.institution}
                 onChange={e => updateForm({ institution: e.target.value })}
+                required
               />
             </div>
 
@@ -153,6 +213,7 @@ export default function ExternalLabWorks() {
                 className="w-full border rounded px-3 py-2"
                 value={form.patientName}
                 onChange={e => updateForm({ patientName: e.target.value })}
+              // Not saved to DB per requirements
               />
             </div>
 
@@ -321,10 +382,12 @@ export default function ExternalLabWorks() {
 
           <div className="flex justify-end pt-4">
             <button
-              type="button"
-              className="px-8 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
+              type="submit"
+              disabled={isSubmitting}
+              className={`px-8 py-3 rounded-lg font-medium transition-colors text-white ${isSubmitting ? "bg-gray-400 cursor-not-allowed" : "bg-green-600 hover:bg-green-700"
+                }`}
             >
-              Generate Quote
+              {isSubmitting ? "Submitting..." : "Generate Quote & Submit"}
             </button>
           </div>
         </form>
