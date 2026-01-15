@@ -1,7 +1,8 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import PageHeader from "../../components/PageHeader";
 import Card from "../../ui/Card";
 import LabProcedures from "./LabProcedures";
+import { listExternalLabOrders, type ExternalLabOrder } from "../../middleware/data";
 
 // ────────────────────────────────────────────────
 // TYPES (kept minimal)
@@ -17,8 +18,6 @@ type OrderItem = {
 type FormData = {
   doctorName: string;
   institution: string;
-  patientName: string;
-  partnerLab: string;
   expectedDate: string;
   shippingMethod: string;
   notes: string;
@@ -50,8 +49,6 @@ const MATERIAL_MULTIPLIER: Record<string, number> = {
 const DEFAULT_FORM_VALUES: FormData = {
   doctorName: "",
   institution: "",
-  patientName: "",
-  partnerLab: "ZenLab",
   expectedDate: "",
   shippingMethod: "Courier",
   notes: "",
@@ -72,6 +69,25 @@ const DEFAULT_FORM_VALUES: FormData = {
 export default function ExternalLabWorks() {
   const [form, setForm] = useState<FormData>(DEFAULT_FORM_VALUES);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [orders, setOrders] = useState<ExternalLabOrder[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch orders on mount
+  useEffect(() => {
+    fetchOrders();
+  }, []);
+
+  const fetchOrders = async () => {
+    setIsLoading(true);
+    try {
+      const data = await listExternalLabOrders();
+      setOrders(data);
+    } catch (error) {
+      console.error("Error fetching orders:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const totalUnits = useMemo(
     () => form.items.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0),
@@ -105,8 +121,6 @@ export default function ExternalLabWorks() {
     setForm({
       doctorName: "Dr. Aurora Finch",
       institution: "Starlight Dental Institute",
-      patientName: "Nova Comet",
-      partnerLab: "FusionCeramics",
       expectedDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
         .toISOString()
         .slice(0, 10),
@@ -141,8 +155,7 @@ export default function ExternalLabWorks() {
 
     setIsSubmitting(true);
     try {
-      // NOTE: patientName and partnerLab are not stored in the external_lab_works table
-      // as per schema requirements.
+
       const orderInput: import("../../middleware/data").ExternalLabOrderInput = {
         id: generateUUID(),
         doctor_name: form.doctorName,
@@ -168,6 +181,7 @@ export default function ExternalLabWorks() {
       if (result) {
         alert("Order submitted successfully!");
         setForm(DEFAULT_FORM_VALUES);
+        fetchOrders(); // Refresh the orders table
       } else {
         alert("Failed to submit order. Please try again.");
       }
@@ -177,6 +191,237 @@ export default function ExternalLabWorks() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const printReceipt = (order: ExternalLabOrder) => {
+    const receiptWindow = window.open("", "_blank");
+    if (!receiptWindow) {
+      alert("Please allow pop-ups to print receipts");
+      return;
+    }
+
+    const receiptDate = order.created_at
+      ? new Date(order.created_at).toLocaleDateString("en-KE", {
+        year: "numeric", month: "long", day: "numeric"
+      })
+      : new Date().toLocaleDateString("en-KE", {
+        year: "numeric", month: "long", day: "numeric"
+      });
+
+    const invoiceNumber = `INV-${order.id.slice(0, 8).toUpperCase()}`;
+
+    const itemsHtml = (order.items || []).map(item => `
+      <tr>
+        <td style="padding: 8px; border-bottom: 1px solid #eee;">${item.product}</td>
+        <td style="padding: 8px; border-bottom: 1px solid #eee;">${item.material}</td>
+        <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity}</td>
+        <td style="padding: 8px; border-bottom: 1px solid #eee;">${item.specs || "-"}</td>
+      </tr>
+    `).join("");
+
+    const receiptHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Receipt - ${invoiceNumber}</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            padding: 40px; 
+            max-width: 800px; 
+            margin: 0 auto;
+            color: #333;
+          }
+          .header { 
+            text-align: center; 
+            margin-bottom: 30px; 
+            padding-bottom: 20px;
+            border-bottom: 2px solid #2563eb;
+          }
+          .logo { 
+            font-size: 28px; 
+            font-weight: bold; 
+            color: #2563eb; 
+            margin-bottom: 5px;
+          }
+          .subtitle { color: #666; font-size: 14px; }
+          .invoice-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 8px;
+          }
+          .invoice-info div { line-height: 1.8; }
+          .label { color: #666; font-size: 12px; text-transform: uppercase; }
+          .value { font-weight: 600; color: #333; }
+          .section-title { 
+            font-size: 14px; 
+            font-weight: 600; 
+            color: #2563eb;
+            margin: 25px 0 15px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+          table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+          th { 
+            background: #2563eb; 
+            color: white; 
+            padding: 12px 8px; 
+            text-align: left;
+            font-size: 12px;
+            text-transform: uppercase;
+          }
+          td { padding: 10px 8px; border-bottom: 1px solid #eee; }
+          .procedures {
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            line-height: 1.6;
+          }
+          .total-section {
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 8px;
+            margin-top: 30px;
+          }
+          .total-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 14px;
+          }
+          .total-row.grand {
+            font-size: 24px;
+            font-weight: bold;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255,255,255,0.3);
+            margin-top: 15px;
+            margin-bottom: 0;
+          }
+          .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            color: #666;
+            font-size: 12px;
+          }
+          .notes {
+            background: #fffbeb;
+            border-left: 4px solid #f59e0b;
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 0 8px 8px 0;
+          }
+          @media print {
+            body { padding: 20px; }
+            .no-print { display: none; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="logo">🦷 AquiDent Lab</div>
+          <div class="subtitle">External Laboratory Services</div>
+        </div>
+
+        <div class="invoice-info">
+          <div>
+            <div class="label">Invoice Number</div>
+            <div class="value">${invoiceNumber}</div>
+            <div class="label" style="margin-top: 15px;">Date</div>
+            <div class="value">${receiptDate}</div>
+          </div>
+          <div style="text-align: right;">
+            <div class="label">Bill To</div>
+            <div class="value">${order.doctor_name}</div>
+            <div class="value">${order.institution}</div>
+            <div class="label" style="margin-top: 15px;">Expected Delivery</div>
+            <div class="value">${order.expected_date || "To be confirmed"}</div>
+          </div>
+        </div>
+
+        ${(order.items || []).length > 0 ? `
+          <div class="section-title">Order Items</div>
+          <table>
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th>Material</th>
+                <th style="text-align: center;">Qty</th>
+                <th>Specifications</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${itemsHtml}
+            </tbody>
+          </table>
+        ` : ""}
+
+        ${order.lab_procedures ? `
+          <div class="section-title">Lab Procedures</div>
+          <div class="procedures">${order.lab_procedures}</div>
+        ` : ""}
+
+        ${order.notes ? `
+          <div class="notes">
+            <strong>Notes:</strong> ${order.notes}
+          </div>
+        ` : ""}
+
+        <div class="total-section">
+          <div class="total-row">
+            <span>Subtotal</span>
+            <span>Ksh ${(order.quote?.subtotal ?? order.lab_cost ?? 0).toLocaleString()}</span>
+          </div>
+          <div class="total-row">
+            <span>Tax</span>
+            <span>Ksh ${(order.quote?.tax ?? 0).toLocaleString()}</span>
+          </div>
+          <div class="total-row grand">
+            <span>Total Amount</span>
+            <span>Ksh ${(order.quote?.total ?? order.lab_cost ?? 0).toLocaleString()}</span>
+          </div>
+        </div>
+
+        <div class="footer">
+          <p>Thank you for choosing AquiDent Lab!</p>
+          <p style="margin-top: 5px;">For inquiries, contact us at info@aquidentlab.com</p>
+          <p style="margin-top: 10px; color: #999;">Shipping Method: ${order.shipping_method || "Courier"} | Status: ${order.status}</p>
+        </div>
+
+        <div class="no-print" style="text-align: center; margin-top: 30px;">
+          <button onclick="window.print()" style="
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-right: 10px;
+          ">🖨️ Print Receipt</button>
+          <button onclick="window.close()" style="
+            background: #6b7280;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+          ">Close</button>
+        </div>
+      </body>
+      </html>
+    `;
+
+    receiptWindow.document.write(receiptHtml);
+    receiptWindow.document.close();
   };
 
   return (
@@ -207,28 +452,7 @@ export default function ExternalLabWorks() {
               />
             </div>
 
-            <div className="space-y-1">
-              <label className="text-sm text-gray-600">Patient Name</label>
-              <input
-                className="w-full border rounded px-3 py-2"
-                value={form.patientName}
-                onChange={e => updateForm({ patientName: e.target.value })}
-              // Not saved to DB per requirements
-              />
-            </div>
 
-            <div className="space-y-1">
-              <label className="text-sm text-gray-600">Partner Lab</label>
-              <select
-                className="w-full border rounded px-3 py-2"
-                value={form.partnerLab}
-                onChange={e => updateForm({ partnerLab: e.target.value })}
-              >
-                <option value="ZenLab">ZenLab</option>
-                <option value="BrightDentalLab">BrightDentalLab</option>
-                <option value="FusionCeramics">FusionCeramics</option>
-              </select>
-            </div>
 
             <div className="space-y-1">
               <label className="text-sm text-gray-600">Expected Date</label>
@@ -391,6 +615,84 @@ export default function ExternalLabWorks() {
             </button>
           </div>
         </form>
+      </Card>
+
+      {/* Orders Table */}
+      <Card>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-gray-800">External Lab Orders</h2>
+            <button
+              type="button"
+              onClick={fetchOrders}
+              className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded"
+            >
+              Refresh
+            </button>
+          </div>
+
+          {isLoading ? (
+            <div className="text-center py-8 text-gray-500">Loading orders...</div>
+          ) : orders.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">No orders found</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 border-b">
+                  <tr>
+                    <th className="text-left px-4 py-3 font-medium text-gray-600">Doctor</th>
+                    <th className="text-left px-4 py-3 font-medium text-gray-600">Institution</th>
+                    <th className="text-left px-4 py-3 font-medium text-gray-600">Expected Date</th>
+                    <th className="text-left px-4 py-3 font-medium text-gray-600">Lab Procedures</th>
+                    <th className="text-right px-4 py-3 font-medium text-gray-600">Lab Cost</th>
+                    <th className="text-center px-4 py-3 font-medium text-gray-600">Status</th>
+                    <th className="text-left px-4 py-3 font-medium text-gray-600">Created</th>
+                    <th className="text-center px-4 py-3 font-medium text-gray-600">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {orders.map(order => (
+                    <tr key={order.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3">{order.doctor_name}</td>
+                      <td className="px-4 py-3">{order.institution}</td>
+                      <td className="px-4 py-3">{order.expected_date || "-"}</td>
+                      <td className="px-4 py-3 max-w-[200px] truncate" title={order.lab_procedures || ""}>
+                        {order.lab_procedures || "-"}
+                      </td>
+                      <td className="px-4 py-3 text-right font-medium">
+                        Ksh {(order.lab_cost ?? 0).toLocaleString()}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${order.status === "completed" ? "bg-green-100 text-green-700" :
+                          order.status === "inProduction" ? "bg-blue-100 text-blue-700" :
+                            order.status === "accepted" ? "bg-purple-100 text-purple-700" :
+                              order.status === "declined" ? "bg-red-100 text-red-700" :
+                                order.status === "submitted" ? "bg-yellow-100 text-yellow-700" :
+                                  "bg-gray-100 text-gray-700"
+                          }`}>
+                          {order.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-gray-500">
+                        {order.created_at ? new Date(order.created_at).toLocaleDateString() : "-"}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <button
+                          type="button"
+                          onClick={() => printReceipt(order)}
+                          className="px-3 py-1.5 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
+                          title="Print Receipt"
+                        >
+                          🖨️ Print
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </Card>
     </div>
   );
