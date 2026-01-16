@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import PageHeader from "../../components/PageHeader";
 import Card from "../../ui/Card";
 import LabProcedures from "./LabProcedures";
@@ -135,6 +135,13 @@ export default function ExternalLabWorks() {
       ],
     });
   };
+
+  const handleTotalChange = useCallback((total: number) => {
+    setForm(prev => {
+      if (prev.lab_cost === total) return prev;
+      return { ...prev, lab_cost: total };
+    });
+  }, []);
 
   const generateUUID = () => {
     // Simple UUID generator for browser environments
@@ -561,7 +568,7 @@ export default function ExternalLabWorks() {
                     : name,
                 })
               }
-              onTotalChange={total => updateForm({ lab_cost: total })}
+              onTotalChange={handleTotalChange}
             />
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

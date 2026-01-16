@@ -17,9 +17,18 @@ import AttendanceEmployees from "./pages/hr/AttendanceEmployees";
 import LeaveManagement from "./pages/hr/LeaveManagement";
 import Payroll from "./pages/hr/Payroll";
 const SalesBilling = lazy(() => import("./pages/SalesBilling"));
+const Sales = lazy(() => import("./pages/SalesBilling/Sales"));
+const SalesInventory = lazy(() => import("./pages/SalesBilling/SalesInventory"));
 
 // Add lazy import for Clinic page
 const Clinic = lazy(() => import("./pages/Clinic"));
+
+// Daily Reports
+const Reports = lazy(() => import("./pages/Reports/Reports"));
+const AssistantReport = lazy(() => import("./pages/Reports/AssistantReport"));
+const LabReport = lazy(() => import("./pages/Reports/LabReport"));
+const FinanceReport = lazy(() => import("./pages/Reports/FinanceReport"));
+const ManagerDashboard = lazy(() => import("./pages/Reports/ManagerDashboard"));
 
 function App() {
   // New: initialize Supabase on mount (optional)
@@ -55,6 +64,15 @@ function App() {
           <Route path="/hr/leave-management" element={<LeaveManagement />} />
           <Route path="/hr/payroll" element={<Payroll />} />
           <Route path="/sales-billing" element={<SalesBilling />} />
+          <Route path="/sales-billing/sales" element={<Sales />} />
+          <Route path="/sales-billing/inventory" element={<SalesInventory />} />
+
+          {/* Daily Reports */}
+          <Route path="/reports" element={<Reports />} />
+          <Route path="/reports/assistant" element={<AssistantReport />} />
+          <Route path="/reports/lab" element={<LabReport />} />
+          <Route path="/reports/finance" element={<FinanceReport />} />
+          <Route path="/reports/manager" element={<ManagerDashboard />} />
 
 
           {/* Fallback */}

@@ -2,6 +2,16 @@ import { getSupabaseClient } from "../lib/supabaseClient";
 
 export type Gender = "M" | "F";
 
+// Installment payment tracking
+export interface InstallmentPayment {
+  id: string;
+  amount: number;
+  paid_at: string;
+  payment_method: "Cash" | "M-Pesa" | "Card" | "Insurance" | "Bank Transfer";
+  receipt_no?: string;
+  notes?: string;
+}
+
 export interface PatientRecord {
   no: number;
   old?: number;
@@ -31,6 +41,12 @@ export interface PatientRecord {
   cash_amount?: number;
   balance?: number;
   to_come_again?: boolean;
+  // ADD: Price locking for fraud prevention
+  price_locked?: boolean;
+  price_locked_at?: string;
+  price_locked_by?: string;
+  // ADD: Installment tracking
+  installments?: InstallmentPayment[];
 }
 
 export interface WalkinInput {
@@ -86,6 +102,12 @@ export async function listWalkins(): Promise<PatientRecord[]> {
     cash_amount: row.cash_amount ?? 0,
     balance: row.balance ?? 0,
     to_come_again: row.to_come_again ?? false,
+    // Price locking fields
+    price_locked: row.price_locked ?? false,
+    price_locked_at: row.price_locked_at ?? undefined,
+    price_locked_by: row.price_locked_by ?? undefined,
+    // Installment tracking
+    installments: row.installments ?? [],
   }));
 }
 
@@ -483,4 +505,536 @@ export async function deleteExternalLabOrder(id: string): Promise<boolean> {
     return false;
   }
   return true;
+}
+
+// ============================================
+// OPTICAL PATIENTS (Independent Module)
+// ============================================
+
+export interface OpticalPrescription {
+  sphere?: string;
+  cylinder?: string;
+  axis?: string;
+  add?: string;
+  prism?: string;
+  va?: string; // Visual acuity
+}
+
+export type OpticalStatus = "pending" | "processing" | "ready" | "collected" | "cancelled";
+
+export interface OpticalPatient {
+  id: string;
+  name: string;
+  gender?: "M" | "F";
+  age?: number;
+  dob?: string;
+  contacts?: string;
+  residence?: string;
+
+  // Prescription
+  prescription_od?: OpticalPrescription;
+  prescription_os?: OpticalPrescription;
+  pd?: string;
+
+  // Frame & Lens
+  frame_brand?: string;
+  frame_model?: string;
+  frame_color?: string;
+  frame_price?: number;
+  lens_type?: string;
+  lens_coating?: string;
+  lens_price?: number;
+
+  // Order details
+  notes?: string;
+  status: OpticalStatus;
+
+  // Billing
+  total_cost?: number;
+  insurance_amount?: number;
+  cash_amount?: number;
+  installments?: InstallmentPayment[];
+  balance?: number;
+  price_locked?: boolean;
+  price_locked_at?: string;
+  price_locked_by?: string;
+
+  // Timestamps
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface OpticalPatientInput {
+  name: string;
+  gender?: "M" | "F";
+  age?: number;
+  dob?: string;
+  contacts?: string;
+  residence?: string;
+  prescription_od?: OpticalPrescription;
+  prescription_os?: OpticalPrescription;
+  pd?: string;
+  frame_brand?: string;
+  frame_model?: string;
+  frame_color?: string;
+  frame_price?: number;
+  lens_type?: string;
+  lens_coating?: string;
+  lens_price?: number;
+  notes?: string;
+  status?: OpticalStatus;
+  total_cost?: number;
+  insurance_amount?: number;
+  cash_amount?: number;
+  installments?: InstallmentPayment[];
+  balance?: number;
+}
+
+const OPTICAL_PATIENTS_TABLE = "optical_patients";
+
+export async function listOpticalPatients(): Promise<OpticalPatient[]> {
+  const sb = getSupabaseClient();
+  const { data, error } = await sb
+    .from(OPTICAL_PATIENTS_TABLE)
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("listOpticalPatients error:", error);
+    return [];
+  }
+
+  return (data ?? []).map((row: any) => ({
+    id: row.id,
+    name: row.name ?? "",
+    gender: row.gender ?? undefined,
+    age: row.age ?? undefined,
+    dob: row.dob ?? undefined,
+    contacts: row.contacts ?? undefined,
+    residence: row.residence ?? undefined,
+    prescription_od: row.prescription_od ?? {},
+    prescription_os: row.prescription_os ?? {},
+    pd: row.pd ?? undefined,
+    frame_brand: row.frame_brand ?? undefined,
+    frame_model: row.frame_model ?? undefined,
+    frame_color: row.frame_color ?? undefined,
+    frame_price: row.frame_price ?? 0,
+    lens_type: row.lens_type ?? undefined,
+    lens_coating: row.lens_coating ?? undefined,
+    lens_price: row.lens_price ?? 0,
+    notes: row.notes ?? undefined,
+    status: row.status ?? "pending",
+    total_cost: row.total_cost ?? 0,
+    insurance_amount: row.insurance_amount ?? 0,
+    cash_amount: row.cash_amount ?? 0,
+    installments: row.installments ?? [],
+    balance: row.balance ?? 0,
+    price_locked: row.price_locked ?? false,
+    price_locked_at: row.price_locked_at ?? undefined,
+    price_locked_by: row.price_locked_by ?? undefined,
+    created_at: row.created_at ?? undefined,
+    updated_at: row.updated_at ?? undefined,
+  }));
+}
+
+export async function createOpticalPatient(
+  input: OpticalPatientInput
+): Promise<OpticalPatient | null> {
+  const sb = getSupabaseClient();
+
+  const totalCost = (input.frame_price ?? 0) + (input.lens_price ?? 0);
+  const balance = totalCost - (input.insurance_amount ?? 0) - (input.cash_amount ?? 0);
+
+  const payload: any = {
+    name: input.name,
+    gender: input.gender || null,
+    age: input.age || null,
+    dob: input.dob || null,
+    contacts: input.contacts || null,
+    residence: input.residence || null,
+    prescription_od: input.prescription_od ?? {},
+    prescription_os: input.prescription_os ?? {},
+    pd: input.pd || null,
+    frame_brand: input.frame_brand || null,
+    frame_model: input.frame_model || null,
+    frame_color: input.frame_color || null,
+    frame_price: input.frame_price ?? 0,
+    lens_type: input.lens_type || null,
+    lens_coating: input.lens_coating || null,
+    lens_price: input.lens_price ?? 0,
+    notes: input.notes || null,
+    status: input.status ?? "pending",
+    total_cost: totalCost,
+    insurance_amount: input.insurance_amount ?? 0,
+    cash_amount: input.cash_amount ?? 0,
+    installments: input.installments ?? [],
+    balance: balance,
+  };
+
+  const { data, error } = await sb
+    .from(OPTICAL_PATIENTS_TABLE)
+    .insert(payload)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("createOpticalPatient error:", error);
+    return null;
+  }
+
+  const row: any = data;
+  return {
+    id: row.id,
+    name: row.name ?? "",
+    gender: row.gender ?? undefined,
+    age: row.age ?? undefined,
+    dob: row.dob ?? undefined,
+    contacts: row.contacts ?? undefined,
+    residence: row.residence ?? undefined,
+    prescription_od: row.prescription_od ?? {},
+    prescription_os: row.prescription_os ?? {},
+    pd: row.pd ?? undefined,
+    frame_brand: row.frame_brand ?? undefined,
+    frame_model: row.frame_model ?? undefined,
+    frame_color: row.frame_color ?? undefined,
+    frame_price: row.frame_price ?? 0,
+    lens_type: row.lens_type ?? undefined,
+    lens_coating: row.lens_coating ?? undefined,
+    lens_price: row.lens_price ?? 0,
+    notes: row.notes ?? undefined,
+    status: row.status ?? "pending",
+    total_cost: row.total_cost ?? 0,
+    insurance_amount: row.insurance_amount ?? 0,
+    cash_amount: row.cash_amount ?? 0,
+    installments: row.installments ?? [],
+    balance: row.balance ?? 0,
+    price_locked: row.price_locked ?? false,
+    price_locked_at: row.price_locked_at ?? undefined,
+    price_locked_by: row.price_locked_by ?? undefined,
+    created_at: row.created_at ?? undefined,
+    updated_at: row.updated_at ?? undefined,
+  };
+}
+
+export async function updateOpticalPatient(
+  id: string,
+  updates: Partial<OpticalPatient>
+): Promise<boolean> {
+  const sb = getSupabaseClient();
+  const payload: any = { ...updates, updated_at: new Date().toISOString() };
+  delete payload.id;
+  delete payload.created_at;
+
+  const { error } = await sb
+    .from(OPTICAL_PATIENTS_TABLE)
+    .update(payload)
+    .eq("id", id);
+
+  if (error) {
+    console.error("updateOpticalPatient error:", error);
+    return false;
+  }
+  return true;
+}
+
+export async function deleteOpticalPatient(id: string): Promise<boolean> {
+  const sb = getSupabaseClient();
+  const { error } = await sb
+    .from(OPTICAL_PATIENTS_TABLE)
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    console.error("deleteOpticalPatient error:", error);
+    return false;
+  }
+  return true;
+}
+
+// ============================================
+// DAILY REPORTS
+// ============================================
+
+export type ReportDepartment = "assistant" | "lab" | "finance";
+
+export interface AssistantReportContent {
+  patients_assisted: number;
+  procedures_supported: string;
+  sterilization_completed: boolean;
+  chairside_assistance: string;
+  appointment_scheduling: string;
+  records_updated: boolean;
+  inventory_check: string;
+  sterilization_log_completed: boolean;
+  operatory_cleaning: boolean;
+  ppe_compliance: boolean;
+  patient_instructions: string;
+  dentist_coordination: string;
+  follow_up_issues: string;
+  challenges: string;
+  suggestions: string;
+  comments: string;
+}
+
+export interface LabReportContent {
+  cases_processed: number;
+  prosthetic_types: string;
+  materials_used: string;
+  special_instructions: string;
+  fit_finish_checks: boolean;
+  adjustments_made: string;
+  inspection_results: string;
+  rework_cases: number;
+  equipment_maintenance: string;
+  inventory_check: string;
+  equipment_issues: string;
+  dentist_coordination: string;
+  feedback_received: string;
+  clarification_pending: string;
+  infection_control: boolean;
+  waste_disposal_completed: boolean;
+  ppe_usage: boolean;
+  challenges: string;
+  suggestions: string;
+  comments: string;
+}
+
+export interface FinanceReportContent {
+  invoices_processed: number;
+  payments_received: number;
+  payments_disbursed: number;
+  bank_reconciliation: boolean;
+  expense_claims: string;
+  journal_entries: string;
+  ledger_updates: boolean;
+  documents_filed: boolean;
+  outstanding_items: string;
+  tax_entries: string;
+  regulatory_filings: boolean;
+  internal_controls: string;
+  audit_queries: string;
+  cash_flow_summary: boolean;
+  variance_analysis: string;
+  budget_monitoring: string;
+  financial_ratios: string;
+  reports_shared: boolean;
+  department_queries: string;
+  follow_ups: string;
+  challenges: string;
+  suggestions: string;
+  comments: string;
+}
+
+export interface DailyReport {
+  id: string;
+  department: ReportDepartment;
+  report_date: string;
+  submitted_by: string;
+  content: AssistantReportContent | LabReportContent | FinanceReportContent;
+  created_at?: string;
+}
+
+const DAILY_REPORTS_TABLE = "daily_reports";
+
+export async function listDailyReports(date?: string): Promise<DailyReport[]> {
+  const sb = getSupabaseClient();
+  let query = sb.from(DAILY_REPORTS_TABLE).select("*").order("created_at", { ascending: false });
+
+  if (date) {
+    query = query.eq("report_date", date);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error("listDailyReports error:", error);
+    return [];
+  }
+
+  return (data ?? []).map((row: any) => ({
+    id: row.id,
+    department: row.department,
+    report_date: row.report_date,
+    submitted_by: row.submitted_by,
+    content: row.content,
+    created_at: row.created_at,
+  }));
+}
+
+export async function createDailyReport(report: Omit<DailyReport, "id" | "created_at">): Promise<boolean> {
+  const sb = getSupabaseClient();
+  const { error } = await sb.from(DAILY_REPORTS_TABLE).insert(report);
+
+  if (error) {
+    console.error("createDailyReport error:", error);
+    return false;
+  }
+  return true;
+}
+
+// ============================================
+// SALES AND INVENTORY
+// ============================================
+
+export interface SalesInventoryItem {
+  id: string;
+  name: string;
+  sku: string;
+  qty: number;
+  initial_qty: number;
+  price: number;
+  status: "In Stock" | "Low" | "Out";
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface Sale {
+  id: string;
+  customer_name: string;
+  item_id: string;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+  sale_date: string;
+  created_at?: string;
+  // Join data
+  item_name?: string;
+}
+
+const SALES_INVENTORY_TABLE = "sales_inventory";
+const SALES_TABLE = "sales";
+
+export async function listSalesInventory(): Promise<SalesInventoryItem[]> {
+  const sb = getSupabaseClient();
+  const { data, error } = await sb
+    .from(SALES_INVENTORY_TABLE)
+    .select("*")
+    .order("name", { ascending: true });
+
+  if (error) {
+    console.error("listSalesInventory error:", error);
+    return [];
+  }
+
+  return (data ?? []).map((row: any) => ({
+    id: row.id,
+    name: row.name,
+    sku: row.sku,
+    qty: row.qty,
+    initial_qty: row.initial_qty ?? row.qty, // Fallback if null
+    price: row.price,
+    status: row.status,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  }));
+}
+
+export async function createSalesInventoryItem(item: Omit<SalesInventoryItem, "id" | "created_at" | "updated_at">): Promise<SalesInventoryItem | null> {
+  const sb = getSupabaseClient();
+  const { data, error } = await sb
+    .from(SALES_INVENTORY_TABLE)
+    .insert(item)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("createSalesInventoryItem error:", error);
+    return null;
+  }
+  return data;
+}
+
+export async function updateSalesInventoryItem(id: string, updates: Partial<SalesInventoryItem>): Promise<boolean> {
+  const sb = getSupabaseClient();
+  const { error } = await sb
+    .from(SALES_INVENTORY_TABLE)
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq("id", id);
+
+  if (error) {
+    console.error("updateSalesInventoryItem error:", error);
+    return false;
+  }
+  return true;
+}
+
+export async function deleteSalesInventoryItem(id: string): Promise<boolean> {
+  const sb = getSupabaseClient();
+  const { error } = await sb
+    .from(SALES_INVENTORY_TABLE)
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    console.error("deleteSalesInventoryItem error:", error);
+    return false;
+  }
+  return true;
+}
+
+export async function listSales(): Promise<Sale[]> {
+  const sb = getSupabaseClient();
+  const { data, error } = await sb
+    .from(SALES_TABLE)
+    .select(`
+      *,
+      sales_inventory (
+        name
+      )
+    `)
+    .order("sale_date", { ascending: false });
+
+  if (error) {
+    console.error("listSales error:", error);
+    return [];
+  }
+
+  return (data ?? []).map((row: any) => ({
+    id: row.id,
+    customer_name: row.customer_name,
+    item_id: row.item_id,
+    quantity: row.quantity,
+    unit_price: row.unit_price,
+    total_price: row.total_price,
+    sale_date: row.sale_date,
+    created_at: row.created_at,
+    item_name: row.sales_inventory?.name,
+  }));
+}
+
+export async function createSale(sale: Omit<Sale, "id" | "created_at" | "item_name">): Promise<Sale | null> {
+  const sb = getSupabaseClient();
+
+  // 1. Create the sale record
+  const { data, error } = await sb
+    .from(SALES_TABLE)
+    .insert(sale)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("createSale error:", error);
+    return null;
+  }
+
+  // 2. Update inventory quantity
+  const { data: item, error: fetchError } = await sb
+    .from(SALES_INVENTORY_TABLE)
+    .select("qty")
+    .eq("id", sale.item_id)
+    .single();
+
+  if (!fetchError && item) {
+    const newQty = Math.max(0, item.qty - sale.quantity);
+    let newStatus: SalesInventoryItem["status"] = "In Stock";
+    if (newQty === 0) newStatus = "Out";
+    else if (newQty < 10) newStatus = "Low";
+
+    await sb
+      .from(SALES_INVENTORY_TABLE)
+      .update({ qty: newQty, status: newStatus, updated_at: new Date().toISOString() })
+      .eq("id", sale.item_id);
+  }
+
+  return data;
 }

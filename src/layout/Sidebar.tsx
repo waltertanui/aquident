@@ -1,10 +1,10 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { NavLink } from "react-router-dom";
 
 const linkClass =
   // changed: make base text light and hover a darker slate
   "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-slate-200 hover:bg-slate-800";
-const activeClass = 
+const activeClass =
   // changed: active state on dark sidebar
   "bg-slate-800 text-white";
 
@@ -14,9 +14,15 @@ function Sidebar() {
   // New: collapsible state for Human Resources
   const [hrOpen, setHrOpen] = useState(true);
 
+  // New: collapsible state for Daily Reports
+  const [reportsOpen, setReportsOpen] = useState(true);
+
+  // New: collapsible state for Sales & Billing
+  const [salesOpen, setSalesOpen] = useState(true);
+
   return (
     // changed: dark sidebar background + light text + darker border
-    <aside className="w-64 border-r border-slate-800 bg-slate-900 text-white">
+    <aside className="w-64 border-r border-slate-800 bg-slate-900 text-white overflow-y-auto h-screen sticky top-0">
       <div className="flex items-center gap-2 px-4 py-4">
         <div className="h-8 w-8 rounded-md bg-teal-600" />
         {/* changed: ensure brand text is white on dark bg */}
@@ -151,14 +157,67 @@ function Sidebar() {
           )}
         </div>
 
-        <NavLink
-          to="/sales-billing"
-          className={({ isActive }) =>
-            `${linkClass} ${isActive ? activeClass : ""}`
-          }
-        >
-          <span>Sales & Billing</span>
-        </NavLink>
+        <div className="mt-2">
+          <button
+            type="button"
+            onClick={() => setSalesOpen((v) => !v)}
+            className={`${linkClass} w-full justify-between`}
+          >
+            <span>Sales & Billing</span>
+            <span className="text-xs text-slate-400">{salesOpen ? "▾" : "▸"}</span>
+          </button>
+          {salesOpen && (
+            <div className="mt-1 space-y-1 pl-4">
+              <NavLink
+                to="/sales-billing/sales"
+                className={({ isActive }) =>
+                  `${linkClass} py-1 text-xs ${isActive ? activeClass : ""}`
+                }
+              >
+                <span>Sales Records</span>
+              </NavLink>
+              <NavLink
+                to="/sales-billing/inventory"
+                className={({ isActive }) =>
+                  `${linkClass} py-1 text-xs ${isActive ? activeClass : ""}`
+                }
+              >
+                <span>Sales Inventory</span>
+              </NavLink>
+            </div>
+          )}
+        </div>
+
+        {/* Daily Reports collapsible section */}
+        <div className="mt-2">
+          <button
+            type="button"
+            onClick={() => setReportsOpen((v) => !v)}
+            className={`${linkClass} w-full justify-between`}
+          >
+            <span>Daily Reports</span>
+            <span className="text-xs text-slate-400">{reportsOpen ? "▾" : "▸"}</span>
+          </button>
+          {reportsOpen && (
+            <div className="mt-1 space-y-1 pl-4">
+              <NavLink to="/reports" className={({ isActive }) => `${linkClass} py-1 text-xs ${isActive ? activeClass : ""}`}>
+                Reports Overview
+              </NavLink>
+              <NavLink to="/reports/assistant" className={({ isActive }) => `${linkClass} py-1 text-xs ${isActive ? activeClass : ""}`}>
+                Assistant Report
+              </NavLink>
+              <NavLink to="/reports/lab" className={({ isActive }) => `${linkClass} py-1 text-xs ${isActive ? activeClass : ""}`}>
+                Lab Report
+              </NavLink>
+              <NavLink to="/reports/finance" className={({ isActive }) => `${linkClass} py-1 text-xs ${isActive ? activeClass : ""}`}>
+                Finance Report
+              </NavLink>
+              <NavLink to="/reports/manager" className={({ isActive }) => `${linkClass} py-1 text-xs ${isActive ? activeClass : ""}`}>
+                Manager Dashboard
+              </NavLink>
+            </div>
+          )}
+        </div>
       </nav>
     </aside>
   );
