@@ -1049,6 +1049,7 @@ export interface InternalInventoryItem {
   id: number;
   name: string;
   sku: string;
+  initial_qty: number;
   qty: number;
   status: InternalInventoryStatus;
   created_at?: string;
@@ -1058,11 +1059,19 @@ export interface InternalInventoryItem {
 export interface InternalInventoryInput {
   name: string;
   sku: string;
+  initial_qty: number;
   qty: number;
-  status: InternalInventoryStatus;
+  status?: InternalInventoryStatus;
 }
 
 const INTERNAL_INVENTORY_TABLE = "internal_inventory";
+
+// Helper to compute status based on qty
+function computeInventoryStatus(qty: number, initialQty: number): InternalInventoryStatus {
+  if (qty === 0) return "Out";
+  if (qty <= initialQty * 0.2) return "Low"; // Low when below 20% of initial
+  return "In Stock";
+}
 
 export async function listInternalInventory(): Promise<InternalInventoryItem[]> {
   const sb = getSupabaseClient();
@@ -1080,6 +1089,7 @@ export async function listInternalInventory(): Promise<InternalInventoryItem[]> 
     id: row.id,
     name: row.name,
     sku: row.sku,
+    initial_qty: row.initial_qty ?? row.qty,
     qty: row.qty,
     status: row.status,
     created_at: row.created_at,
@@ -1091,12 +1101,14 @@ export async function createInternalInventoryItem(
   input: InternalInventoryInput
 ): Promise<InternalInventoryItem | null> {
   const sb = getSupabaseClient();
+  const status = computeInventoryStatus(input.qty, input.initial_qty);
 
   const payload = {
     name: input.name,
     sku: input.sku,
+    initial_qty: input.initial_qty,
     qty: input.qty,
-    status: input.status,
+    status: status,
   };
 
   const { data, error } = await sb
@@ -1122,6 +1134,18 @@ export async function updateInternalInventoryItem(
   delete payload.id;
   delete payload.created_at;
 
+  // Auto-compute status if qty changed
+  if (updates.qty !== undefined) {
+    const { data: current } = await sb
+      .from(INTERNAL_INVENTORY_TABLE)
+      .select("initial_qty")
+      .eq("id", id)
+      .single();
+    if (current) {
+      payload.status = computeInventoryStatus(updates.qty, current.initial_qty);
+    }
+  }
+
   const { error } = await sb
     .from(INTERNAL_INVENTORY_TABLE)
     .update(payload)
@@ -1145,5 +1169,203 @@ export async function deleteInternalInventoryItem(id: number): Promise<boolean> 
     console.error("deleteInternalInventoryItem error:", error);
     return false;
   }
+  return true;
+}
+
+// ============================================
+// INVENTORY REQUESTS (Approval Workflow)
+// ============================================
+
+export type InventoryRequestStatus = "pending" | "approved" | "rejected";
+export type InventoryRequestSource = "internal_lab" | "external_lab" | "clinic";
+
+export interface InventoryRequest {
+  id: number;
+  inventory_item_id: number;
+  quantity: number;
+  source: InventoryRequestSource;
+  source_reference?: string;
+  patient_name?: string;
+  requested_by?: string;
+  status: InventoryRequestStatus;
+  approved_by?: string;
+  rejection_reason?: string;
+  created_at?: string;
+  approved_at?: string;
+  // Joined data
+  item_name?: string;
+  item_sku?: string;
+}
+
+export interface InventoryRequestInput {
+  inventory_item_id: number;
+  quantity: number;
+  source: InventoryRequestSource;
+  source_reference?: string;
+  patient_name?: string;
+  requested_by?: string;
+}
+
+const INVENTORY_REQUESTS_TABLE = "inventory_requests";
+
+export async function listInventoryRequests(status?: InventoryRequestStatus): Promise<InventoryRequest[]> {
+  const sb = getSupabaseClient();
+  let query = sb
+    .from(INVENTORY_REQUESTS_TABLE)
+    .select(`
+      *,
+      internal_inventory (
+        name,
+        sku
+      )
+    `)
+    .order("created_at", { ascending: false });
+
+  if (status) {
+    query = query.eq("status", status);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error("listInventoryRequests error:", error);
+    return [];
+  }
+
+  return (data ?? []).map((row: any) => ({
+    id: row.id,
+    inventory_item_id: row.inventory_item_id,
+    quantity: row.quantity,
+    source: row.source,
+    source_reference: row.source_reference,
+    patient_name: row.patient_name,
+    requested_by: row.requested_by,
+    status: row.status,
+    approved_by: row.approved_by,
+    rejection_reason: row.rejection_reason,
+    created_at: row.created_at,
+    approved_at: row.approved_at,
+    item_name: row.internal_inventory?.name,
+    item_sku: row.internal_inventory?.sku,
+  }));
+}
+
+export async function createInventoryRequest(
+  input: InventoryRequestInput
+): Promise<InventoryRequest | null> {
+  const sb = getSupabaseClient();
+
+  const { data, error } = await sb
+    .from(INVENTORY_REQUESTS_TABLE)
+    .insert({
+      inventory_item_id: input.inventory_item_id,
+      quantity: input.quantity,
+      source: input.source,
+      source_reference: input.source_reference || null,
+      patient_name: input.patient_name || null,
+      requested_by: input.requested_by || null,
+      status: "pending",
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error("createInventoryRequest error:", error);
+    return null;
+  }
+
+  return data;
+}
+
+export async function approveInventoryRequest(
+  requestId: number,
+  approvedBy: string
+): Promise<boolean> {
+  const sb = getSupabaseClient();
+
+  // Get the request details
+  const { data: request, error: fetchError } = await sb
+    .from(INVENTORY_REQUESTS_TABLE)
+    .select("inventory_item_id, quantity, status")
+    .eq("id", requestId)
+    .single();
+
+  if (fetchError || !request) {
+    console.error("approveInventoryRequest fetch error:", fetchError);
+    return false;
+  }
+
+  if (request.status !== "pending") {
+    console.error("Request is not pending");
+    return false;
+  }
+
+  // Get current inventory item
+  const { data: item, error: itemError } = await sb
+    .from(INTERNAL_INVENTORY_TABLE)
+    .select("qty, initial_qty")
+    .eq("id", request.inventory_item_id)
+    .single();
+
+  if (itemError || !item) {
+    console.error("approveInventoryRequest item fetch error:", itemError);
+    return false;
+  }
+
+  // Calculate new quantity
+  const newQty = Math.max(0, item.qty - request.quantity);
+  const newStatus = computeInventoryStatus(newQty, item.initial_qty);
+
+  // Update inventory item
+  const { error: updateItemError } = await sb
+    .from(INTERNAL_INVENTORY_TABLE)
+    .update({ qty: newQty, status: newStatus })
+    .eq("id", request.inventory_item_id);
+
+  if (updateItemError) {
+    console.error("approveInventoryRequest update item error:", updateItemError);
+    return false;
+  }
+
+  // Update request status
+  const { error: updateRequestError } = await sb
+    .from(INVENTORY_REQUESTS_TABLE)
+    .update({
+      status: "approved",
+      approved_by: approvedBy,
+      approved_at: new Date().toISOString(),
+    })
+    .eq("id", requestId);
+
+  if (updateRequestError) {
+    console.error("approveInventoryRequest update request error:", updateRequestError);
+    return false;
+  }
+
+  return true;
+}
+
+export async function rejectInventoryRequest(
+  requestId: number,
+  rejectedBy: string,
+  reason?: string
+): Promise<boolean> {
+  const sb = getSupabaseClient();
+
+  const { error } = await sb
+    .from(INVENTORY_REQUESTS_TABLE)
+    .update({
+      status: "rejected",
+      approved_by: rejectedBy,
+      rejection_reason: reason || null,
+      approved_at: new Date().toISOString(),
+    })
+    .eq("id", requestId);
+
+  if (error) {
+    console.error("rejectInventoryRequest error:", error);
+    return false;
+  }
+
   return true;
 }

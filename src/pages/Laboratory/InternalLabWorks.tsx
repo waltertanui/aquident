@@ -3,6 +3,7 @@ import Card from "../../ui/Card";
 // Add React state for the form
 import { useState, useEffect } from "react";
 import LabProcedures from "./LabProcedures";
+import InventoryRequestModal from "../../components/InventoryRequestModal";
 
 
 type WorkOrderForm = {
@@ -35,6 +36,7 @@ function InternalLabWorks() {
 
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [showInventoryModal, setShowInventoryModal] = useState(false);
 
   async function fetchLabQueue() {
     try {
@@ -261,11 +263,27 @@ function InternalLabWorks() {
                 >
                   {submitting ? "Processing..." : "Mark as Completed"}
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setShowInventoryModal(true)}
+                  className="text-sm px-4 py-2 rounded-md bg-amber-600 text-white hover:bg-amber-700 shadow-sm"
+                >
+                  Request Materials
+                </button>
                 {message && (
                   <span className="text-xs text-green-600 font-medium">{message}</span>
                 )}
               </div>
             </form>
+
+            {/* Inventory Request Modal */}
+            <InventoryRequestModal
+              isOpen={showInventoryModal}
+              onClose={() => setShowInventoryModal(false)}
+              source="internal_lab"
+              patientName={selectedPatient?.name}
+              sourceReference={selectedPatient ? `Patient #${selectedPatient.no}` : undefined}
+            />
           </Card>
         ) : (
           <div className="md:col-span-3 border border-dashed border-gray-300 rounded-lg p-8 text-center text-gray-500">

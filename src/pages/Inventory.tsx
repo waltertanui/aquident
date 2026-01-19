@@ -4,43 +4,52 @@ import { useEffect, useMemo, useState } from "react";
 import type {
   InternalInventoryItem,
   InternalInventoryStatus,
+  InventoryRequest,
 } from "../middleware/data";
 import {
   listInternalInventory,
   createInternalInventoryItem,
   deleteInternalInventoryItem,
+  listInventoryRequests,
+  approveInventoryRequest,
+  rejectInventoryRequest,
 } from "../middleware/data";
 
 function Inventory() {
   const [items, setItems] = useState<InternalInventoryItem[]>([]);
+  const [requests, setRequests] = useState<InventoryRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [showAdd, setShowAdd] = useState(false);
+  const [activeTab, setActiveTab] = useState<"inventory" | "requests">("inventory");
   const [newItem, setNewItem] = useState({
     name: "",
     sku: "",
+    initial_qty: 0,
     qty: 0,
-    status: "In Stock" as InternalInventoryStatus,
   });
 
-  // Load items from Supabase
+  // Load items and requests from Supabase
   useEffect(() => {
-    async function fetchItems() {
+    async function fetchData() {
       setLoading(true);
       setError(null);
       try {
-        const data = await listInternalInventory();
-        setItems(data);
+        const [inventoryData, requestsData] = await Promise.all([
+          listInternalInventory(),
+          listInventoryRequests("pending"),
+        ]);
+        setItems(inventoryData);
+        setRequests(requestsData);
       } catch (err) {
         console.error("Error loading inventory:", err);
-        setError("Failed to load inventory. Please ensure the database table exists.");
+        setError("Failed to load inventory. Please ensure the database tables exist.");
       }
       setLoading(false);
     }
-    fetchItems();
+    fetchData();
   }, []);
-
 
   const filteredItems = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -59,14 +68,14 @@ function Inventory() {
     const created = await createInternalInventoryItem({
       name: newItem.name,
       sku: newItem.sku,
+      initial_qty: newItem.initial_qty,
       qty: newItem.qty,
-      status: newItem.status,
     });
     if (created) {
       setItems((prev) => [...prev, created]);
     }
     setShowAdd(false);
-    setNewItem({ name: "", sku: "", qty: 0, status: "In Stock" });
+    setNewItem({ name: "", sku: "", initial_qty: 0, qty: 0 });
   };
 
   const deleteItem = async (id: number) => {
@@ -76,148 +85,264 @@ function Inventory() {
     }
   };
 
+  const handleApprove = async (requestId: number) => {
+    const success = await approveInventoryRequest(requestId, "Inventory Keeper");
+    if (success) {
+      // Refresh both lists
+      const [inventoryData, requestsData] = await Promise.all([
+        listInternalInventory(),
+        listInventoryRequests("pending"),
+      ]);
+      setItems(inventoryData);
+      setRequests(requestsData);
+    }
+  };
+
+  const handleReject = async (requestId: number) => {
+    const reason = prompt("Reason for rejection (optional):");
+    const success = await rejectInventoryRequest(requestId, "Inventory Keeper", reason || undefined);
+    if (success) {
+      setRequests((prev) => prev.filter((r) => r.id !== requestId));
+    }
+  };
+
+  const getStatusBadge = (status: InternalInventoryStatus) => {
+    const styles = {
+      "In Stock": "bg-green-100 text-green-700",
+      "Low": "bg-amber-100 text-amber-700",
+      "Out": "bg-red-100 text-red-700",
+    };
+    return (
+      <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs ${styles[status]}`}>
+        {status}
+      </span>
+    );
+  };
+
+  const getSourceBadge = (source: string) => {
+    const labels: Record<string, string> = {
+      internal_lab: "Internal Lab",
+      external_lab: "External Lab",
+      clinic: "Clinic",
+    };
+    const styles: Record<string, string> = {
+      internal_lab: "bg-blue-100 text-blue-700",
+      external_lab: "bg-purple-100 text-purple-700",
+      clinic: "bg-teal-100 text-teal-700",
+    };
+    return (
+      <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs ${styles[source] || "bg-gray-100 text-gray-700"}`}>
+        {labels[source] || source}
+      </span>
+    );
+  };
+
   return (
     <div className="p-6 space-y-6">
       <PageHeader
         title="Inventory"
         action={{ label: "Add Item", onClick: () => setShowAdd(true) }}
       />
+
+      {/* Tab Navigation */}
+      <div className="flex gap-2 border-b border-gray-200">
+        <button
+          onClick={() => setActiveTab("inventory")}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === "inventory"
+              ? "border-blue-500 text-blue-600"
+              : "border-transparent text-gray-500 hover:text-gray-700"
+            }`}
+        >
+          Inventory Items
+        </button>
+        <button
+          onClick={() => setActiveTab("requests")}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === "requests"
+              ? "border-blue-500 text-blue-600"
+              : "border-transparent text-gray-500 hover:text-gray-700"
+            }`}
+        >
+          Pending Requests
+          {requests.length > 0 && (
+            <span className="ml-2 inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold bg-red-500 text-white rounded-full">
+              {requests.length}
+            </span>
+          )}
+        </button>
+      </div>
+
       <Card>
-        {/* search */}
-        <div className="flex items-center justify-between gap-4 mb-4">
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by name, SKU, quantity, status..."
-            className="w-full md:w-80 rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-
-        {/* add form */}
-        {showAdd && (
-          <div className="mb-4 grid grid-cols-1 md:grid-cols-5 gap-3">
-            <input
-              type="text"
-              value={newItem.name}
-              onChange={(e) =>
-                setNewItem((ni) => ({ ...ni, name: e.target.value }))
-              }
-              placeholder="Name"
-              className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <input
-              type="text"
-              value={newItem.sku}
-              onChange={(e) =>
-                setNewItem((ni) => ({ ...ni, sku: e.target.value }))
-              }
-              placeholder="SKU"
-              className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <input
-              type="number"
-              value={newItem.qty}
-              onChange={(e) =>
-                setNewItem((ni) => ({ ...ni, qty: Number(e.target.value) }))
-              }
-              placeholder="Qty"
-              className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <select
-              value={newItem.status}
-              onChange={(e) =>
-                setNewItem((ni) => ({
-                  ...ni,
-                  status: e.target.value as InternalInventoryStatus,
-                }))
-              }
-              className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="In Stock">In Stock</option>
-              <option value="Low">Low</option>
-              <option value="Out">Out</option>
-            </select>
-            <div className="flex gap-2">
-              <button
-                onClick={addItem}
-                className="rounded-md bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700"
-              >
-                Save
-              </button>
-              <button
-                onClick={() => setShowAdd(false)}
-                className="rounded-md bg-gray-200 px-3 py-2 text-sm text-gray-800 hover:bg-gray-300"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        )}
-
         {/* error state */}
         {error && (
           <div className="py-8 text-center text-red-500">
             {error}
             <div className="mt-2 text-sm text-gray-500">
-              Run the SQL migration in Supabase to create the internal_inventory table.
+              Run the SQL migrations in Supabase to create the tables.
             </div>
           </div>
         )}
 
         {/* loading state */}
         {loading && !error ? (
-          <div className="py-8 text-center text-gray-500">Loading inventory...</div>
+          <div className="py-8 text-center text-gray-500">Loading...</div>
+        ) : activeTab === "inventory" ? (
+          <>
+            {/* search */}
+            <div className="flex items-center justify-between gap-4 mb-4">
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search by name, SKU, quantity, status..."
+                className="w-full md:w-80 rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            {/* add form */}
+            {showAdd && (
+              <div className="mb-4 grid grid-cols-1 md:grid-cols-5 gap-3">
+                <input
+                  type="text"
+                  value={newItem.name}
+                  onChange={(e) => setNewItem((ni) => ({ ...ni, name: e.target.value }))}
+                  placeholder="Name"
+                  className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <input
+                  type="text"
+                  value={newItem.sku}
+                  onChange={(e) => setNewItem((ni) => ({ ...ni, sku: e.target.value }))}
+                  placeholder="SKU"
+                  className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <input
+                  type="number"
+                  value={newItem.initial_qty}
+                  onChange={(e) => {
+                    const val = Number(e.target.value);
+                    setNewItem((ni) => ({ ...ni, initial_qty: val, qty: val }));
+                  }}
+                  placeholder="Initial Qty"
+                  className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <input
+                  type="number"
+                  value={newItem.qty}
+                  onChange={(e) => setNewItem((ni) => ({ ...ni, qty: Number(e.target.value) }))}
+                  placeholder="Current Qty"
+                  className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={addItem}
+                    className="rounded-md bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700"
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={() => setShowAdd(false)}
+                    className="rounded-md bg-gray-200 px-3 py-2 text-sm text-gray-800 hover:bg-gray-300"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* inventory table */}
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="text-left text-gray-500">
+                    <th className="py-2 px-3">Name</th>
+                    <th className="py-2 px-3">SKU</th>
+                    <th className="py-2 px-3">Initial Qty</th>
+                    <th className="py-2 px-3">Current Qty</th>
+                    <th className="py-2 px-3">Status</th>
+                    <th className="py-2 px-3">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredItems.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="py-6 px-3 text-center text-gray-500">
+                        No items found.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredItems.map((item) => (
+                      <tr key={item.id} className="border-t border-gray-200">
+                        <td className="py-2 px-3">{item.name}</td>
+                        <td className="py-2 px-3">{item.sku}</td>
+                        <td className="py-2 px-3">{item.initial_qty}</td>
+                        <td className="py-2 px-3">{item.qty}</td>
+                        <td className="py-2 px-3">{getStatusBadge(item.status)}</td>
+                        <td className="py-2 px-3">
+                          <button
+                            onClick={() => deleteItem(item.id)}
+                            className="rounded-md bg-red-600 px-2 py-1 text-xs text-white hover:bg-red-700"
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </>
         ) : (
-          /* table */
+          /* Pending Requests Tab */
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
               <thead>
                 <tr className="text-left text-gray-500">
-                  <th className="py-2 px-3">Name</th>
-                  <th className="py-2 px-3">SKU</th>
+                  <th className="py-2 px-3">Item</th>
                   <th className="py-2 px-3">Qty</th>
-                  <th className="py-2 px-3">Status</th>
+                  <th className="py-2 px-3">Source</th>
+                  <th className="py-2 px-3">Patient</th>
+                  <th className="py-2 px-3">Requested By</th>
+                  <th className="py-2 px-3">Date</th>
                   <th className="py-2 px-3">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredItems.length === 0 ? (
+                {requests.length === 0 ? (
                   <tr>
-                    <td
-                      colSpan={5}
-                      className="py-6 px-3 text-center text-gray-500"
-                    >
-                      No items found.
+                    <td colSpan={7} className="py-6 px-3 text-center text-gray-500">
+                      No pending requests.
                     </td>
                   </tr>
                 ) : (
-                  filteredItems.map((item) => (
-                    <tr key={item.id} className="border-t border-gray-200">
-                      <td className="py-2 px-3">{item.name}</td>
-                      <td className="py-2 px-3">{item.sku}</td>
-                      <td className="py-2 px-3">{item.qty}</td>
+                  requests.map((req) => (
+                    <tr key={req.id} className="border-t border-gray-200">
                       <td className="py-2 px-3">
-                        <span
-                          className={
-                            "inline-flex items-center rounded-full px-2 py-1 text-xs " +
-                            (item.status === "In Stock"
-                              ? "bg-green-100 text-green-700"
-                              : item.status === "Low"
-                                ? "bg-amber-100 text-amber-700"
-                                : "bg-red-100 text-red-700")
-                          }
-                        >
-                          {item.status}
-                        </span>
+                        <div className="font-medium">{req.item_name}</div>
+                        <div className="text-xs text-gray-500">{req.item_sku}</div>
+                      </td>
+                      <td className="py-2 px-3">{req.quantity}</td>
+                      <td className="py-2 px-3">{getSourceBadge(req.source)}</td>
+                      <td className="py-2 px-3">{req.patient_name || "-"}</td>
+                      <td className="py-2 px-3">{req.requested_by || "-"}</td>
+                      <td className="py-2 px-3">
+                        {req.created_at ? new Date(req.created_at).toLocaleDateString() : "-"}
                       </td>
                       <td className="py-2 px-3">
-                        <button
-                          onClick={() => deleteItem(item.id)}
-                          className="rounded-md bg-red-600 px-2 py-1 text-xs text-white hover:bg-red-700"
-                        >
-                          Delete
-                        </button>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleApprove(req.id)}
+                            className="rounded-md bg-green-600 px-2 py-1 text-xs text-white hover:bg-green-700"
+                          >
+                            Approve
+                          </button>
+                          <button
+                            onClick={() => handleReject(req.id)}
+                            className="rounded-md bg-red-600 px-2 py-1 text-xs text-white hover:bg-red-700"
+                          >
+                            Reject
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))

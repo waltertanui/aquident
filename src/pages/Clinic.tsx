@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { listWalkins, updateWalkin } from "../middleware/data";
 import type { PatientRecord } from "../middleware/data";
+import InventoryRequestModal from "../components/InventoryRequestModal";
 
 type ProcedureItem = { id: string; name: string };
 type ProcedureCategory = { id: string; name: string; items: ProcedureItem[] };
@@ -99,6 +100,7 @@ export default function Clinic() {
   // Tooth selection state
   const [selectedTeeth, setSelectedTeeth] = useState<Set<number>>(new Set());
   const [isChildDentition, setIsChildDentition] = useState(false);
+  const [showInventoryModal, setShowInventoryModal] = useState(false);
 
   // Derived state
   const activePatients = useMemo(() => patients.filter(p => p.status === 'active'), [patients]);
@@ -448,6 +450,14 @@ export default function Clinic() {
           </select>
           <button
             type="button"
+            onClick={() => setShowInventoryModal(true)}
+            disabled={!selectedPatient}
+            className="rounded bg-amber-600 px-4 py-2 text-white disabled:opacity-50 hover:bg-amber-700"
+          >
+            Request Supplies
+          </button>
+          <button
+            type="button"
             onClick={() => assign('lab')}
             disabled={!patientId || selected.size === 0}
             className="rounded bg-indigo-600 px-4 py-2 text-white disabled:opacity-50 hover:bg-indigo-700"
@@ -464,6 +474,15 @@ export default function Clinic() {
           </button>
         </div>
       </div>
+
+      {/* Inventory Request Modal */}
+      <InventoryRequestModal
+        isOpen={showInventoryModal}
+        onClose={() => setShowInventoryModal(false)}
+        source="clinic"
+        patientName={selectedPatient?.name}
+        sourceReference={selectedPatient ? `Patient #${selectedPatient.no}` : undefined}
+      />
 
       <div className="text-xs text-gray-500">
         After clicking Assign, check the browser console to see the payload.
@@ -493,8 +512,8 @@ export default function Clinic() {
                   <td className="py-2">{p.doc_name || "-"}</td>
                   <td className="py-2">
                     <span className={`rounded-full px-2 py-1 text-xs capitalize ${p.status === 'lab'
-                        ? 'bg-yellow-100 text-yellow-800'
-                        : 'bg-green-100 text-green-700'
+                      ? 'bg-yellow-100 text-yellow-800'
+                      : 'bg-green-100 text-green-700'
                       }`}>
                       {p.status === 'lab' ? 'Sent to Lab' : 'Completed'}
                     </span>

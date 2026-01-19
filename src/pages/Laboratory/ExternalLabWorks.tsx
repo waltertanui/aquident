@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState, useCallback } from "react";
 import PageHeader from "../../components/PageHeader";
 import Card from "../../ui/Card";
 import LabProcedures from "./LabProcedures";
+import InventoryRequestModal from "../../components/InventoryRequestModal";
 import { listExternalLabOrders, type ExternalLabOrder } from "../../middleware/data";
 
 // ────────────────────────────────────────────────
@@ -71,6 +72,7 @@ export default function ExternalLabWorks() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orders, setOrders] = useState<ExternalLabOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [showInventoryModal, setShowInventoryModal] = useState(false);
 
   // Fetch orders on mount
   useEffect(() => {
@@ -611,7 +613,14 @@ export default function ExternalLabWorks() {
             </div>
           </div>
 
-          <div className="flex justify-end pt-4">
+          <div className="flex justify-end gap-3 pt-4">
+            <button
+              type="button"
+              onClick={() => setShowInventoryModal(true)}
+              className="px-6 py-3 rounded-lg font-medium bg-amber-600 hover:bg-amber-700 text-white transition-colors"
+            >
+              Request Materials
+            </button>
             <button
               type="submit"
               disabled={isSubmitting}
@@ -622,6 +631,15 @@ export default function ExternalLabWorks() {
             </button>
           </div>
         </form>
+
+        {/* Inventory Request Modal */}
+        <InventoryRequestModal
+          isOpen={showInventoryModal}
+          onClose={() => setShowInventoryModal(false)}
+          source="external_lab"
+          patientName={form.doctorName || undefined}
+          sourceReference={form.institution || undefined}
+        />
       </Card>
 
       {/* Orders Table */}

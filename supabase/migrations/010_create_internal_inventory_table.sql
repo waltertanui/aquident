@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS internal_inventory (
     id SERIAL PRIMARY KEY,
     name TEXT NOT NULL,
     sku TEXT UNIQUE NOT NULL,
+    initial_qty INTEGER NOT NULL DEFAULT 0,
     qty INTEGER NOT NULL DEFAULT 0,
     status TEXT NOT NULL DEFAULT 'In Stock' CHECK (status IN ('In Stock', 'Low', 'Out')),
     created_at TIMESTAMPTZ DEFAULT NOW(),
