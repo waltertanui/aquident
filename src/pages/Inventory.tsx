@@ -1,33 +1,46 @@
 import PageHeader from "../components/PageHeader";
 import Card from "../ui/Card";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type {
+  InternalInventoryItem,
+  InternalInventoryStatus,
+} from "../middleware/data";
+import {
+  listInternalInventory,
+  createInternalInventoryItem,
+  deleteInternalInventoryItem,
+} from "../middleware/data";
 
 function Inventory() {
-  // --- added: local state, types, helpers ---
-  type Item = {
-    id: number;
-    name: string;
-    sku: string;
-    qty: number;
-    status: "In Stock" | "Low" | "Out";
-  };
-
-  const initialItems: Item[] = [
-    { id: 1, name: "Toothbrush", sku: "TB-001", qty: 120, status: "In Stock" },
-    { id: 2, name: "Floss", sku: "FL-002", qty: 35, status: "Low" },
-    { id: 3, name: "Mouthwash", sku: "MW-003", qty: 0, status: "Out" },
-  ];
-
-  const [items, setItems] = useState<Item[]>(initialItems);
+  const [items, setItems] = useState<InternalInventoryItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [showAdd, setShowAdd] = useState(false);
-  const [newItem, setNewItem] = useState<Item>({
-    id: 0,
+  const [newItem, setNewItem] = useState({
     name: "",
     sku: "",
     qty: 0,
-    status: "In Stock",
+    status: "In Stock" as InternalInventoryStatus,
   });
+
+  // Load items from Supabase
+  useEffect(() => {
+    async function fetchItems() {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await listInternalInventory();
+        setItems(data);
+      } catch (err) {
+        console.error("Error loading inventory:", err);
+        setError("Failed to load inventory. Please ensure the database table exists.");
+      }
+      setLoading(false);
+    }
+    fetchItems();
+  }, []);
+
 
   const filteredItems = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -41,19 +54,28 @@ function Inventory() {
     );
   }, [items, query]);
 
-  const addItem = () => {
+  const addItem = async () => {
     if (!newItem.name || !newItem.sku) return;
-    setItems((prev) => {
-      const nextId = (prev.length ? Math.max(...prev.map((i) => i.id)) : 0) + 1;
-      return [...prev, { ...newItem, id: nextId }];
+    const created = await createInternalInventoryItem({
+      name: newItem.name,
+      sku: newItem.sku,
+      qty: newItem.qty,
+      status: newItem.status,
     });
+    if (created) {
+      setItems((prev) => [...prev, created]);
+    }
     setShowAdd(false);
-    setNewItem({ id: 0, name: "", sku: "", qty: 0, status: "In Stock" });
+    setNewItem({ name: "", sku: "", qty: 0, status: "In Stock" });
   };
 
-  const deleteItem = (id: number) => {
-    setItems((prev) => prev.filter((i) => i.id !== id));
+  const deleteItem = async (id: number) => {
+    const success = await deleteInternalInventoryItem(id);
+    if (success) {
+      setItems((prev) => prev.filter((i) => i.id !== id));
+    }
   };
+
   return (
     <div className="p-6 space-y-6">
       <PageHeader
@@ -107,7 +129,7 @@ function Inventory() {
               onChange={(e) =>
                 setNewItem((ni) => ({
                   ...ni,
-                  status: e.target.value as Item["status"],
+                  status: e.target.value as InternalInventoryStatus,
                 }))
               }
               className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -133,62 +155,77 @@ function Inventory() {
           </div>
         )}
 
-        {/* table */}
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead>
-              <tr className="text-left text-gray-500">
-                <th className="py-2 px-3">Name</th>
-                <th className="py-2 px-3">SKU</th>
-                <th className="py-2 px-3">Qty</th>
-                <th className="py-2 px-3">Status</th>
-                <th className="py-2 px-3">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredItems.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={5}
-                    className="py-6 px-3 text-center text-gray-500"
-                  >
-                    No items found.
-                  </td>
+        {/* error state */}
+        {error && (
+          <div className="py-8 text-center text-red-500">
+            {error}
+            <div className="mt-2 text-sm text-gray-500">
+              Run the SQL migration in Supabase to create the internal_inventory table.
+            </div>
+          </div>
+        )}
+
+        {/* loading state */}
+        {loading && !error ? (
+          <div className="py-8 text-center text-gray-500">Loading inventory...</div>
+        ) : (
+          /* table */
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="text-left text-gray-500">
+                  <th className="py-2 px-3">Name</th>
+                  <th className="py-2 px-3">SKU</th>
+                  <th className="py-2 px-3">Qty</th>
+                  <th className="py-2 px-3">Status</th>
+                  <th className="py-2 px-3">Actions</th>
                 </tr>
-              ) : (
-                filteredItems.map((item) => (
-                  <tr key={item.id} className="border-t border-gray-200">
-                    <td className="py-2 px-3">{item.name}</td>
-                    <td className="py-2 px-3">{item.sku}</td>
-                    <td className="py-2 px-3">{item.qty}</td>
-                    <td className="py-2 px-3">
-                      <span
-                        className={
-                          "inline-flex items-center rounded-full px-2 py-1 text-xs " +
-                          (item.status === "In Stock"
-                            ? "bg-green-100 text-green-700"
-                            : item.status === "Low"
-                            ? "bg-amber-100 text-amber-700"
-                            : "bg-red-100 text-red-700")
-                        }
-                      >
-                        {item.status}
-                      </span>
-                    </td>
-                    <td className="py-2 px-3">
-                      <button
-                        onClick={() => deleteItem(item.id)}
-                        className="rounded-md bg-red-600 px-2 py-1 text-xs text-white hover:bg-red-700"
-                      >
-                        Delete
-                      </button>
+              </thead>
+              <tbody>
+                {filteredItems.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={5}
+                      className="py-6 px-3 text-center text-gray-500"
+                    >
+                      No items found.
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                ) : (
+                  filteredItems.map((item) => (
+                    <tr key={item.id} className="border-t border-gray-200">
+                      <td className="py-2 px-3">{item.name}</td>
+                      <td className="py-2 px-3">{item.sku}</td>
+                      <td className="py-2 px-3">{item.qty}</td>
+                      <td className="py-2 px-3">
+                        <span
+                          className={
+                            "inline-flex items-center rounded-full px-2 py-1 text-xs " +
+                            (item.status === "In Stock"
+                              ? "bg-green-100 text-green-700"
+                              : item.status === "Low"
+                                ? "bg-amber-100 text-amber-700"
+                                : "bg-red-100 text-red-700")
+                          }
+                        >
+                          {item.status}
+                        </span>
+                      </td>
+                      <td className="py-2 px-3">
+                        <button
+                          onClick={() => deleteItem(item.id)}
+                          className="rounded-md bg-red-600 px-2 py-1 text-xs text-white hover:bg-red-700"
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </Card>
     </div>
   );

@@ -1038,3 +1038,112 @@ export async function createSale(sale: Omit<Sale, "id" | "created_at" | "item_na
 
   return data;
 }
+
+// ============================================
+// INTERNAL INVENTORY (Clinic Supplies)
+// ============================================
+
+export type InternalInventoryStatus = "In Stock" | "Low" | "Out";
+
+export interface InternalInventoryItem {
+  id: number;
+  name: string;
+  sku: string;
+  qty: number;
+  status: InternalInventoryStatus;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface InternalInventoryInput {
+  name: string;
+  sku: string;
+  qty: number;
+  status: InternalInventoryStatus;
+}
+
+const INTERNAL_INVENTORY_TABLE = "internal_inventory";
+
+export async function listInternalInventory(): Promise<InternalInventoryItem[]> {
+  const sb = getSupabaseClient();
+  const { data, error } = await sb
+    .from(INTERNAL_INVENTORY_TABLE)
+    .select("*")
+    .order("name", { ascending: true });
+
+  if (error) {
+    console.error("listInternalInventory error:", error);
+    return [];
+  }
+
+  return (data ?? []).map((row: any) => ({
+    id: row.id,
+    name: row.name,
+    sku: row.sku,
+    qty: row.qty,
+    status: row.status,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  }));
+}
+
+export async function createInternalInventoryItem(
+  input: InternalInventoryInput
+): Promise<InternalInventoryItem | null> {
+  const sb = getSupabaseClient();
+
+  const payload = {
+    name: input.name,
+    sku: input.sku,
+    qty: input.qty,
+    status: input.status,
+  };
+
+  const { data, error } = await sb
+    .from(INTERNAL_INVENTORY_TABLE)
+    .insert(payload)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("createInternalInventoryItem error:", error);
+    return null;
+  }
+
+  return data;
+}
+
+export async function updateInternalInventoryItem(
+  id: number,
+  updates: Partial<InternalInventoryItem>
+): Promise<boolean> {
+  const sb = getSupabaseClient();
+  const payload: any = { ...updates };
+  delete payload.id;
+  delete payload.created_at;
+
+  const { error } = await sb
+    .from(INTERNAL_INVENTORY_TABLE)
+    .update(payload)
+    .eq("id", id);
+
+  if (error) {
+    console.error("updateInternalInventoryItem error:", error);
+    return false;
+  }
+  return true;
+}
+
+export async function deleteInternalInventoryItem(id: number): Promise<boolean> {
+  const sb = getSupabaseClient();
+  const { error } = await sb
+    .from(INTERNAL_INVENTORY_TABLE)
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    console.error("deleteInternalInventoryItem error:", error);
+    return false;
+  }
+  return true;
+}

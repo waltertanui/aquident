@@ -58,7 +58,7 @@ function SalesInventory() {
     };
 
     const formatCurrency = (n: number) =>
-        n.toLocaleString(undefined, { style: "currency", currency: "USD" });
+        n.toLocaleString("en-KE", { style: "currency", currency: "KES" });
 
     return (
         <div className="p-6 space-y-6">
@@ -154,10 +154,10 @@ function SalesInventory() {
                                 items.map(item => (
                                     <tr key={item.id} className="hover:bg-gray-50 transition">
                                         <td className="p-4 text-gray-900 font-medium">{item.name}</td>
-                                        <td className="p-4 text-slate-300">{item.sku}</td>
+                                        <td className="p-4 text-slate-700">{item.sku}</td>
                                         <td className="p-4 text-right text-teal-600 font-medium">{item.initial_qty}</td>
-                                        <td className="p-4 text-right text-slate-300">{item.qty}</td>
-                                        <td className="p-4 text-right text-slate-300">{formatCurrency(item.price)}</td>
+                                        <td className="p-4 text-right text-slate-700">{item.qty}</td>
+                                        <td className="p-4 text-right text-slate-700">{formatCurrency(item.price)}</td>
                                         <td className="p-4 text-center">
                                             <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium 
                         ${item.status === 'In Stock' ? 'bg-green-100 text-green-800' :
