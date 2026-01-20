@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
 import PageHeader from "../components/PageHeader";
-import SummaryCard from "../components/SummaryCard";
 import Card from "../ui/Card";
 
 import {
@@ -25,11 +24,7 @@ import {
   Cell,
   BarChart,
   Bar,
-  Legend,
 } from "recharts";
-
-// Color palette for charts
-const COLORS = ["#0ea5e9", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899"];
 
 function Dashboard() {
   const [patients, setPatients] = useState<PatientRecord[]>([]);
@@ -66,13 +61,8 @@ function Dashboard() {
     // Total patients
     const totalPatients = patients.length;
 
-    // Walk-ins today (checking if 'no' might be a timestamp or using any date field available)
-    // Since we don't have created_at, we'll show total for now
-    const walkinsToday = patients.filter(p => {
-      // If we had created_at, we'd check it here
-      // For now, just return 0 as placeholder
-      return false;
-    }).length;
+    // Walk-ins today - placeholder since we don't have created_at
+    const walkinsToday = 0;
 
     // Completed lab works
     const completedLabWorks = patients.filter(p => p.status === "completed").length;
@@ -152,7 +142,7 @@ function Dashboard() {
     // This is a placeholder - in production you'd use actual date fields
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"];
     const baseRevenue = kpis.totalRevenue / 6;
-    return months.map((month, i) => ({
+    return months.map((month) => ({
       month,
       revenue: Math.round(baseRevenue * (0.8 + Math.random() * 0.4)),
       patients: Math.round((kpis.totalPatients / 6) * (0.8 + Math.random() * 0.4)),
@@ -301,7 +291,7 @@ function Dashboard() {
                 <XAxis dataKey="month" tick={{ fontSize: 12 }} stroke="#9ca3af" />
                 <YAxis tick={{ fontSize: 12 }} stroke="#9ca3af" tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
                 <Tooltip
-                  formatter={(value: number) => [formatCurrency(value), "Revenue"]}
+                  formatter={(value) => [formatCurrency(Number(value)), "Revenue"]}
                   contentStyle={{ borderRadius: 8, border: "none", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}
                 />
                 <Line
@@ -332,14 +322,14 @@ function Dashboard() {
                     outerRadius={80}
                     paddingAngle={5}
                     dataKey="value"
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
                     labelLine={false}
                   >
                     {paymentPieData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                  <Tooltip formatter={(value) => formatCurrency(Number(value))} />
                 </PieChart>
               </ResponsiveContainer>
             ) : (

@@ -1,5 +1,3 @@
-import React from "react";
-
 function Topbar() {
   return (
     <header className="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-6 py-3">

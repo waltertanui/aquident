@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import PageHeader from "../../components/PageHeader";
 import Card from "../../ui/Card";
 import LabProcedures from "./LabProcedures";

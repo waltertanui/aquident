@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { listWalkins, updateWalkin } from "../middleware/data";
 import type { PatientRecord } from "../middleware/data";
 import InventoryRequestModal from "../components/InventoryRequestModal";
