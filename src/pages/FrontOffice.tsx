@@ -159,19 +159,51 @@ function FrontOffice() {
         title="Front Office"
         action={{ label: "New Walk-in", onClick: () => setShowForm(true) }}
       />
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <SummaryCard
-          label="Total Walk-ins"
-          value={formatCurrency(patients.length)}
-        />
-        <SummaryCard
-          label="Completed Lab Works"
-          value={formatCurrency(patients.filter(p => p.status === 'completed').length)}
-        />
-        <SummaryCard
-          label="Total Revenue"
-          value={`Ksh ${formatCurrency(patients.reduce((sum, p) => sum + (p.insurance_amount || 0) + (p.cash_amount || 0), 0))}`}
-        />
+      {/* Colorful KPI Cards */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="bg-gradient-to-br from-teal-500 to-teal-600 rounded-xl p-4 text-white shadow-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm opacity-90">Total Walk-ins</div>
+              <div className="text-2xl font-bold mt-1">{formatCurrency(patients.length)}</div>
+            </div>
+            <div className="text-3xl opacity-80">🚶</div>
+          </div>
+          <div className="mt-2 text-xs opacity-75">All registered patients</div>
+        </div>
+
+        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-4 text-white shadow-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm opacity-90">Active Patients</div>
+              <div className="text-2xl font-bold mt-1">{formatCurrency(patients.filter(p => p.status === 'active').length)}</div>
+            </div>
+            <div className="text-3xl opacity-80">⏳</div>
+          </div>
+          <div className="mt-2 text-xs opacity-75">Currently in treatment</div>
+        </div>
+
+        <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl p-4 text-white shadow-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm opacity-90">Completed</div>
+              <div className="text-2xl font-bold mt-1">{formatCurrency(patients.filter(p => p.status === 'completed').length)}</div>
+            </div>
+            <div className="text-3xl opacity-80">✅</div>
+          </div>
+          <div className="mt-2 text-xs opacity-75">Finished treatments</div>
+        </div>
+
+        <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-4 text-white shadow-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm opacity-90">Total Revenue</div>
+              <div className="text-2xl font-bold mt-1">Ksh {formatCurrency(patients.reduce((sum, p) => sum + (p.insurance_amount || 0) + (p.cash_amount || 0), 0))}</div>
+            </div>
+            <div className="text-3xl opacity-80">💰</div>
+          </div>
+          <div className="mt-2 text-xs opacity-75">Insurance + Cash</div>
+        </div>
       </div>
 
       {/* Search Bar */}

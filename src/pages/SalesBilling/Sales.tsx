@@ -62,12 +62,67 @@ function Sales() {
     const formatCurrency = (n: number) =>
         n.toLocaleString(undefined, { style: "currency", currency: "USD" });
 
+    // Calculate KPIs
+    const today = new Date().toISOString().split("T")[0];
+    const totalRevenue = sales.reduce((sum, s) => sum + s.total_price, 0);
+    const todaysSales = sales.filter(s => s.sale_date.startsWith(today));
+    const todaysRevenue = todaysSales.reduce((sum, s) => sum + s.total_price, 0);
+    const totalTransactions = sales.length;
+    const totalItemsSold = sales.reduce((sum, s) => sum + s.quantity, 0);
+
     return (
         <div className="p-6 space-y-6">
             <PageHeader
                 title="Sales"
                 action={{ label: "Add Sale", onClick: () => setShowAddSale(true) }}
             />
+
+            {/* Colorful KPI Cards */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl p-4 text-white shadow-lg">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <div className="text-sm opacity-90">Total Revenue</div>
+                            <div className="text-2xl font-bold mt-1">Ksh {totalRevenue.toLocaleString()}</div>
+                        </div>
+                        <div className="text-3xl opacity-80">💰</div>
+                    </div>
+                    <div className="mt-2 text-xs opacity-75">All time sales revenue</div>
+                </div>
+
+                <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-4 text-white shadow-lg">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <div className="text-sm opacity-90">Today's Revenue</div>
+                            <div className="text-2xl font-bold mt-1">Ksh {todaysRevenue.toLocaleString()}</div>
+                        </div>
+                        <div className="text-3xl opacity-80">📅</div>
+                    </div>
+                    <div className="mt-2 text-xs opacity-75">{todaysSales.length} transactions today</div>
+                </div>
+
+                <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-4 text-white shadow-lg">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <div className="text-sm opacity-90">Total Transactions</div>
+                            <div className="text-2xl font-bold mt-1">{totalTransactions.toLocaleString()}</div>
+                        </div>
+                        <div className="text-3xl opacity-80">🧾</div>
+                    </div>
+                    <div className="mt-2 text-xs opacity-75">Completed sales</div>
+                </div>
+
+                <div className="bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl p-4 text-white shadow-lg">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <div className="text-sm opacity-90">Items Sold</div>
+                            <div className="text-2xl font-bold mt-1">{totalItemsSold.toLocaleString()}</div>
+                        </div>
+                        <div className="text-3xl opacity-80">📦</div>
+                    </div>
+                    <div className="mt-2 text-xs opacity-75">Total quantity sold</div>
+                </div>
+            </div>
 
             {showAddSale && (
                 <Card>

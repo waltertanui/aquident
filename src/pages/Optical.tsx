@@ -417,12 +417,51 @@ td{padding:10px 8px;border-bottom:1px solid #eee}
     <div className="p-6 space-y-6">
       <PageHeader title="Optical" action={{ label: "New Patient", onClick: () => setShowForm(true) }} />
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <SummaryCard label="Total Revenue" value={`Ksh ${stats.revenue.toLocaleString()}`} />
-        <SummaryCard label="Paid Amount" value={`Ksh ${stats.paid.toLocaleString()}`} />
-        <SummaryCard label="Balance Due" value={`Ksh ${stats.balance.toLocaleString()}`} />
-        <SummaryCard label="Total Orders" value={String(stats.totalOrders)} />
+      {/* Colorful KPI Cards */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl p-4 text-white shadow-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm opacity-90">Total Revenue</div>
+              <div className="text-2xl font-bold mt-1">Ksh {stats.revenue.toLocaleString()}</div>
+            </div>
+            <div className="text-3xl opacity-80">💰</div>
+          </div>
+          <div className="mt-2 text-xs opacity-75">Expected from all orders</div>
+        </div>
+
+        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-4 text-white shadow-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm opacity-90">Paid Amount</div>
+              <div className="text-2xl font-bold mt-1">Ksh {stats.paid.toLocaleString()}</div>
+            </div>
+            <div className="text-3xl opacity-80">✅</div>
+          </div>
+          <div className="mt-2 text-xs opacity-75">Total collected</div>
+        </div>
+
+        <div className="bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl p-4 text-white shadow-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm opacity-90">Balance Due</div>
+              <div className="text-2xl font-bold mt-1">Ksh {stats.balance.toLocaleString()}</div>
+            </div>
+            <div className="text-3xl opacity-80">⏳</div>
+          </div>
+          <div className="mt-2 text-xs opacity-75">Pending payments</div>
+        </div>
+
+        <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-4 text-white shadow-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm opacity-90">Total Orders</div>
+              <div className="text-2xl font-bold mt-1">{stats.totalOrders}</div>
+            </div>
+            <div className="text-3xl opacity-80">👓</div>
+          </div>
+          <div className="mt-2 text-xs opacity-75">Optical patients</div>
+        </div>
       </div>
 
       {/* Search & Table */}
