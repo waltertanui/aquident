@@ -1,6 +1,5 @@
 // Top-level imports
 import PageHeader from "../components/PageHeader";
-import SummaryCard from "../components/SummaryCard";
 import AllRecords from "../components/AllRecords";
 
 // ADD: hooks for table filter/search

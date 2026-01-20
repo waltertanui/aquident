@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import PageHeader from "../components/PageHeader";
-import SummaryCard from "../components/SummaryCard";
+
 import {
   listOpticalPatients,
   createOpticalPatient,
