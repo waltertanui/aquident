@@ -335,7 +335,7 @@ export default function ExternalLabWorks() {
       </head>
       <body>
         <div class="header">
-          <div class="logo">🦷 AquiDent Lab</div>
+          <div class="logo">🦷 Aquadent Lab</div>
           <div class="subtitle">External Laboratory Services</div>
         </div>
 
@@ -399,8 +399,8 @@ export default function ExternalLabWorks() {
         </div>
 
         <div class="footer">
-          <p>Thank you for choosing AquiDent Lab!</p>
-          <p style="margin-top: 5px;">For inquiries, contact us at info@aquidentlab.com</p>
+          <p>Thank you for choosing Aquadent Lab!</p>
+          <p style="margin-top: 5px;">For inquiries, contact us at info@aquadentlab.com</p>
           <p style="margin-top: 10px; color: #999;">Shipping Method: ${order.shipping_method || "Courier"} | Status: ${order.status}</p>
         </div>
 

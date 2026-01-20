@@ -160,18 +160,20 @@ function FrontOffice() {
         action={{ label: "New Walk-in", onClick: () => setShowForm(true) }}
       />
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <SummaryCard label="Check-ins Today" value="42" />
-        <SummaryCard label="Pending Forms" value="15" />
-        <SummaryCard label="Messages" value="9" />
-        <SummaryCard label="Open Tickets" value="3" />
+        <SummaryCard
+          label="Total Walk-ins"
+          value={formatCurrency(patients.length)}
+        />
+        <SummaryCard
+          label="Completed Lab Works"
+          value={formatCurrency(patients.filter(p => p.status === 'completed').length)}
+        />
+        <SummaryCard
+          label="Total Revenue"
+          value={`Ksh ${formatCurrency(patients.reduce((sum, p) => sum + (p.insurance_amount || 0) + (p.cash_amount || 0), 0))}`}
+        />
       </div>
 
-      import AllRecords from "../components/AllRecords";
-
-      // ... imports
-
-      // ... inside component ...
-      {/* Search Bar */}
       {/* Search Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h2 className="text-lg font-semibold">Patient Records</h2>

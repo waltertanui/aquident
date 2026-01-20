@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { NavLink } from "react-router-dom";
+import logo from "../assets/aquadent_logo.png";
 
 const linkClass =
   // changed: make base text light and hover a darker slate
@@ -24,9 +25,9 @@ function Sidebar() {
     // changed: dark sidebar background + light text + darker border
     <aside className="w-64 border-r border-slate-800 bg-slate-900 text-white overflow-y-auto h-screen sticky top-0">
       <div className="flex items-center gap-2 px-4 py-4">
-        <div className="h-8 w-8 rounded-md bg-teal-600" />
+        <img src={logo} alt="Aquadent" className="h-10 w-10 object-contain rounded-full" />
         {/* changed: ensure brand text is white on dark bg */}
-        <div className="font-semibold text-white">AquiDent</div>
+        <div className="font-semibold text-white">Aquadent</div>
       </div>
 
       <nav className="space-y-1 px-2">

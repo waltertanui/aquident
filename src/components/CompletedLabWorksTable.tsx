@@ -362,7 +362,7 @@ const CompletedLabWorksTable: React.FC<CompletedLabWorksTableProps> = ({ patient
             </head>
             <body>
                 <div class="header">
-                    <div class="logo">🦷 AquiDent Dental Clinic</div>
+                    <div class="logo">🦷 Aquadent Dental Clinic</div>
                     <div class="subtitle">Patient Receipt / Invoice</div>
                 </div>
 
@@ -438,8 +438,8 @@ const CompletedLabWorksTable: React.FC<CompletedLabWorksTableProps> = ({ patient
                 </div>
 
                 <div class="footer">
-                    <p>Thank you for choosing AquiDent Dental Clinic!</p>
-                    <p style="margin-top: 5px;">For inquiries, contact us at info@aquident.com</p>
+                    <p>Thank you for choosing Aquadent Dental Clinic!</p>
+                    <p style="margin-top: 5px;">For inquiries, contact us at info@aquadent.com</p>
                     ${p.price_locked ? `<p style="margin-top: 10px;"><span class="locked-badge">🔒 Prices Locked on ${p.price_locked_at ? new Date(p.price_locked_at).toLocaleDateString() : 'N/A'}</span></p>` : ""}
                 </div>
 

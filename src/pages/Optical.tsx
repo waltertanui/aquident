@@ -332,7 +332,7 @@ td{padding:10px 8px;border-bottom:1px solid #eee}
 @media print{.no-print{display:none}}
 </style></head><body>
 <div class="header">
-  <div class="logo">👓 AquiDent Optical</div>
+  <div class="logo">👓 Aquadent Optical</div>
   <div class="subtitle">Eye Care Services</div>
 </div>
 <div class="info-grid">
@@ -395,7 +395,7 @@ td{padding:10px 8px;border-bottom:1px solid #eee}
 </div>
 
 <div class="footer">
-  <p>Thank you for choosing AquiDent Optical!</p>
+  <p>Thank you for choosing Aquadent Optical!</p>
   ${patient.notes ? `<p style="margin-top:10px;color:#666">Notes: ${patient.notes}</p>` : ''}
 </div>
 
