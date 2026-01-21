@@ -9,7 +9,7 @@ import { useMemo, useState, useEffect, useRef } from "react";
 // import { getWalkins, saveWalkin } from "../data/dataService";
 
 // Ensure Supabase middleware imports (already present)
-import { listWalkins, createWalkin, type PatientRecord, type Gender } from "../middleware/data";
+import { listWalkins, createWalkin, type PatientRecord, type Gender, type TimeRange } from "../middleware/data";
 
 // REMOVE: local sample data — fetch from Supabase instead
 // const samplePatients: PatientRecord[] = [
@@ -27,6 +27,7 @@ function FrontOffice() {
   const [query, setQuery] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [patients, setPatients] = useState<PatientRecord[]>([]);
+  const [timeFilter, setTimeFilter] = useState<TimeRange>('Today');
 
   useEffect(() => {
     // CHANGE: fetch all from Supabase and replace local state
@@ -37,16 +38,32 @@ function FrontOffice() {
     run();
   }, []);
 
+  const filteredByTime = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    return patients.filter(p => {
+      if (!p.created_at) return true;
+      const d = new Date(p.created_at);
+      if (timeFilter === 'Today') return d >= today;
+      const diffDays = (today.getTime() - d.getTime()) / (1000 * 60 * 60 * 24);
+      if (timeFilter === 'Weekly') return diffDays <= 7;
+      if (timeFilter === 'Monthly') return diffDays <= 30;
+      if (timeFilter === 'Quarterly') return diffDays <= 90;
+      return true;
+    });
+  }, [patients, timeFilter]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return patients;
-    return patients.filter(
+    if (!q) return filteredByTime;
+    return filteredByTime.filter(
       (p) =>
         p.name.toLowerCase().includes(q) ||
         p.res.toLowerCase().includes(q) ||
         String(p.no).includes(q)
     );
-  }, [query, patients]);
+  }, [query, filteredByTime]);
 
   // ADD: form typing state + existing selection + refs to prefill
   const [tempName, setTempName] = useState("");
@@ -158,13 +175,31 @@ function FrontOffice() {
         title="Front Office"
         action={{ label: "New Walk-in", onClick: () => setShowForm(true) }}
       />
+
+      <div className="flex items-center gap-3 bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
+        <label className="text-sm font-semibold text-gray-700">Reporting Range:</label>
+        <select
+          value={timeFilter}
+          onChange={(e) => setTimeFilter(e.target.value as TimeRange)}
+          className="border-none rounded-lg px-4 py-2 text-sm bg-gray-50 font-medium text-gray-900 focus:ring-2 focus:ring-blue-500 cursor-pointer transition-all"
+        >
+          <option value="Today">Today Only</option>
+          <option value="Weekly">Weekly (Last 7 Days)</option>
+          <option value="Monthly">Monthly (Last 30 Days)</option>
+          <option value="Quarterly">Quarterly (Last 90 Days)</option>
+          <option value="All">All Time (Legacy Data)</option>
+        </select>
+        <div className="ml-auto text-xs text-gray-500 font-medium">
+          Stats for <span className="text-blue-600">{timeFilter}</span>
+        </div>
+      </div>
       {/* Colorful KPI Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="bg-gradient-to-br from-teal-500 to-teal-600 rounded-xl p-4 text-white shadow-lg">
           <div className="flex items-center justify-between">
             <div>
               <div className="text-sm opacity-90">Total Walk-ins</div>
-              <div className="text-2xl font-bold mt-1">{formatCurrency(patients.length)}</div>
+              <div className="text-2xl font-bold mt-1">{formatCurrency(filteredByTime.length)}</div>
             </div>
             <div className="text-3xl opacity-80">🚶</div>
           </div>
@@ -175,7 +210,7 @@ function FrontOffice() {
           <div className="flex items-center justify-between">
             <div>
               <div className="text-sm opacity-90">Active Patients</div>
-              <div className="text-2xl font-bold mt-1">{formatCurrency(patients.filter(p => p.status === 'active').length)}</div>
+              <div className="text-2xl font-bold mt-1">{formatCurrency(filteredByTime.filter(p => p.status === 'active').length)}</div>
             </div>
             <div className="text-3xl opacity-80">⏳</div>
           </div>
@@ -186,7 +221,7 @@ function FrontOffice() {
           <div className="flex items-center justify-between">
             <div>
               <div className="text-sm opacity-90">Completed</div>
-              <div className="text-2xl font-bold mt-1">{formatCurrency(patients.filter(p => p.status === 'completed').length)}</div>
+              <div className="text-2xl font-bold mt-1">{formatCurrency(filteredByTime.filter(p => p.status === 'completed').length)}</div>
             </div>
             <div className="text-3xl opacity-80">✅</div>
           </div>
@@ -197,7 +232,7 @@ function FrontOffice() {
           <div className="flex items-center justify-between">
             <div>
               <div className="text-sm opacity-90">Total Revenue</div>
-              <div className="text-2xl font-bold mt-1">Ksh {formatCurrency(patients.reduce((sum, p) => sum + (p.insurance_amount || 0) + (p.cash_amount || 0), 0))}</div>
+              <div className="text-2xl font-bold mt-1">Ksh {formatCurrency(filteredByTime.reduce((sum, p) => sum + (p.insurance_amount || 0) + (p.cash_amount || 0), 0))}</div>
             </div>
             <div className="text-3xl opacity-80">💰</div>
           </div>
@@ -325,7 +360,7 @@ function FrontOffice() {
             <input
               ref={opRef}
               name="op"
-              placeholder="Payment Type (OP)"
+              placeholder="Payment Type (Insurance)"
               className="border rounded-md px-3 py-2 w-full"
               required
             />

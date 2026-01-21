@@ -88,7 +88,7 @@ const AllRecords: React.FC<AllRecordsProps> = ({
                                     <th className="p-3 font-medium text-gray-600">DOB</th>
                                     <th className="p-3 font-medium text-gray-600">CONTACTS</th>
                                     <th className="p-3 font-medium text-gray-600">RES</th>
-                                    <th className="p-3 font-medium text-gray-600">OP</th>
+                                    <th className="p-3 font-medium text-gray-600">Insurance</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">

@@ -42,6 +42,8 @@ const CompletedLabWorksTable: React.FC<CompletedLabWorksTableProps> = ({ patient
     });
     const [localInstallments, setLocalInstallments] = useState<InstallmentPayment[]>([]);
 
+    const filteredPatients = patients; // No internal filtering, handle it at parent level
+
     const formatDOB = (dob?: string) => {
         if (!dob) return "—";
         const d = new Date(dob);
@@ -480,15 +482,14 @@ const CompletedLabWorksTable: React.FC<CompletedLabWorksTableProps> = ({ patient
                 <table className="min-w-full text-sm">
                     <thead className="bg-gray-50">
                         <tr className="text-left border-b">
-                            <th className="p-3 font-medium text-gray-600">NO</th>
-                            <th className="p-3 font-medium text-gray-600">STATUS</th>
-                            <th className="p-3 font-medium text-gray-600">PATIENT</th>
+                            <th className="p-3 font-medium text-gray-600 sticky left-0 z-20 bg-gray-50 border-r border-gray-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] w-[60px] min-w-[60px] max-w-[60px]">NO</th>
+                            <th className="p-3 font-medium text-gray-600 sticky left-[60px] z-20 bg-gray-50 border-r border-gray-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] min-w-[150px]">PATIENT</th>
                             <th className="p-3 font-medium text-gray-600">G</th>
                             <th className="p-3 font-medium text-gray-600">AGE</th>
                             <th className="p-3 font-medium text-gray-600">DOB</th>
                             <th className="p-3 font-medium text-gray-600">CONTACTS</th>
                             <th className="p-3 font-medium text-gray-600">RES</th>
-                            <th className="p-3 font-medium text-gray-600">OP</th>
+                            <th className="p-3 font-medium text-gray-600">INSURANCE</th>
                             <th className="p-3 font-medium text-gray-600">PROCEDURE</th>
                             <th className="p-3 font-medium text-gray-600">LAB PROCEDURES</th>
                             <th className="p-3 font-medium text-gray-600">NOTES</th>
@@ -496,7 +497,7 @@ const CompletedLabWorksTable: React.FC<CompletedLabWorksTableProps> = ({ patient
                             <th className="p-3 font-medium text-gray-600">LAB COST</th>
                             <th className="p-3 font-medium text-gray-600">LAB STATUS</th>
                             <th className="p-3 font-medium text-gray-600 bg-blue-50">CLINIC COST</th>
-                            <th className="p-3 font-medium text-gray-600 bg-blue-50">INSURANCE</th>
+                            <th className="p-3 font-medium text-gray-600 bg-blue-50">INS. AMT</th>
                             <th className="p-3 font-medium text-gray-600 bg-blue-50">CASH</th>
                             <th className="p-3 font-medium text-gray-600 bg-blue-50">INSTALLMENTS</th>
                             <th className="p-3 font-medium text-gray-600 bg-blue-50">BALANCE</th>
@@ -505,37 +506,32 @@ const CompletedLabWorksTable: React.FC<CompletedLabWorksTableProps> = ({ patient
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                        {patients.length === 0 ? (
+                        {filteredPatients.length === 0 ? (
                             <tr>
-                                <td colSpan={22} className="p-4 text-center text-slate-500">No completed lab works.</td>
+                                <td colSpan={22} className="p-4 text-center text-slate-500">
+                                    No records found for the selected criteria.
+                                </td>
                             </tr>
                         ) : (
-                            patients.map((p) => (
+                            filteredPatients.map((p) => (
                                 <tr key={p.no} className="hover:bg-slate-50">
-                                    <td className="p-3">{p.no}</td>
-                                    <td className="p-3">
-                                        {p.old ? (
-                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-gray-100 text-gray-600 text-xs font-medium">
-                                                Old
-                                            </span>
-                                        ) : p.newId ? (
-                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-green-100 text-green-700 text-xs font-medium">
-                                                New
-                                            </span>
-                                        ) : (
-                                            <span className="text-gray-300">—</span>
-                                        )}
-                                    </td>
-                                    <td className="p-3 font-medium">{p.name}</td>
+                                    <td className="p-3 sticky left-0 z-10 bg-white border-r border-gray-100 font-medium w-[60px] min-w-[60px] max-w-[60px]">{p.no}</td>
+                                    <td className="p-3 font-medium sticky left-[60px] z-10 bg-white border-r border-gray-100 min-w-[150px]">{p.name}</td>
                                     <td className="p-3">{p.g}</td>
                                     <td className="p-3">{getAge(p)}</td>
                                     <td className="p-3 text-gray-500">{formatDOB(p.dob)}</td>
                                     <td className="p-3">{p.contacts}</td>
                                     <td className="p-3">{p.res}</td>
                                     <td className="p-3">{p.op}</td>
-                                    <td className="p-3 text-gray-500 min-w-[200px]">{p.procedure?.join(', ') || '-'}</td>
-                                    <td className="p-3 min-w-[200px]">{p.lab_procedures || '-'}</td>
-                                    <td className="p-3 min-w-[200px]">{p.lab_notes || '-'}</td>
+                                    <td className="p-3 text-gray-500 max-w-[200px]">
+                                        <div className="truncate" title={p.procedure?.join(', ')}>{p.procedure?.join(', ') || '-'}</div>
+                                    </td>
+                                    <td className="p-3 max-w-[200px]">
+                                        <div className="truncate" title={p.lab_procedures}>{p.lab_procedures || '-'}</div>
+                                    </td>
+                                    <td className="p-3 max-w-[200px]">
+                                        <div className="truncate" title={p.lab_notes}>{p.lab_notes || '-'}</div>
+                                    </td>
                                     <td className="p-3">
                                         <span className={`text-xs px-2 py-1 rounded-full ${p.lab_type === 'Internal' ? 'bg-blue-50 text-blue-700' : 'bg-orange-50 text-orange-700'}`}>
                                             {p.lab_type || 'Internal'}
@@ -550,7 +546,6 @@ const CompletedLabWorksTable: React.FC<CompletedLabWorksTableProps> = ({ patient
                                     {/* Display values (read-only) */}
                                     <td className="p-3 bg-blue-50/30 text-right font-medium">
                                         {(p.clinic_cost || 0).toLocaleString()}
-                                        {p.price_locked && <span className="ml-1 text-amber-600" title="Price Locked">🔒</span>}
                                     </td>
                                     <td className="p-3 bg-blue-50/30 text-right font-medium">
                                         {(p.insurance_amount || 0).toLocaleString()}
@@ -655,18 +650,11 @@ const CompletedLabWorksTable: React.FC<CompletedLabWorksTableProps> = ({ patient
                             </div>
 
                             {/* Clinic Cost */}
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Clinic Cost
-                                </label>
-                                <input
-                                    type="number"
-                                    value={formData.clinic_cost || ''}
-                                    onChange={(e) => setFormData(prev => ({ ...prev, clinic_cost: parseFloat(e.target.value) || 0 }))}
-                                    className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isPriceLocked ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-                                    placeholder="Enter clinic cost"
-                                    disabled={isPriceLocked}
-                                />
+                            <div className="flex justify-between items-center py-2 bg-gray-50 px-3 rounded">
+                                <span className="text-sm text-gray-600">Clinic Cost</span>
+                                <span className="font-semibold text-gray-800">
+                                    {(formData.clinic_cost || 0).toLocaleString()}
+                                </span>
                             </div>
 
                             {/* Total Cost (calculated) */}

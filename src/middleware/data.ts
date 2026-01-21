@@ -1,6 +1,7 @@
 import { getSupabaseClient } from "../lib/supabaseClient";
 
 export type Gender = "M" | "F";
+export type TimeRange = 'Today' | 'Weekly' | 'Monthly' | 'Quarterly' | 'All';
 
 // Installment payment tracking
 export interface InstallmentPayment {
@@ -47,6 +48,7 @@ export interface PatientRecord {
   price_locked_by?: string;
   // ADD: Installment tracking
   installments?: InstallmentPayment[];
+  created_at?: string;
 }
 
 export interface WalkinInput {
@@ -108,6 +110,7 @@ export async function listWalkins(): Promise<PatientRecord[]> {
     price_locked_by: row.price_locked_by ?? undefined,
     // Installment tracking
     installments: row.installments ?? [],
+    created_at: row.created_at ?? undefined,
   }));
 }
 

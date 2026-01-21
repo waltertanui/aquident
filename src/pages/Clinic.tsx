@@ -1,62 +1,117 @@
 import { useMemo, useState, useEffect } from "react";
-import { listWalkins, updateWalkin } from "../middleware/data";
-import type { PatientRecord } from "../middleware/data";
+import { listWalkins, updateWalkin, type PatientRecord, type TimeRange } from "../middleware/data";
 import InventoryRequestModal from "../components/InventoryRequestModal";
 
-type ProcedureItem = { id: string; name: string };
+type ProcedureItem = { id: string; name: string; price: number };
 type ProcedureCategory = { id: string; name: string; items: ProcedureItem[] };
 
 const PROCEDURES: ProcedureCategory[] = [
   {
-    id: "general",
-    name: "General",
+    id: "consultation",
+    name: "Consultation",
     items: [
-      { id: "consultation", name: "Consultation" },
-    ],
-  },
-  {
-    id: "endodontics",
-    name: "Endodontics (RCT)",
-    items: [
-      { id: "rct_start", name: "RCT Start" },
-      { id: "bmp", name: "BMP" },
-      { id: "obt", name: "OBT" },
-      { id: "rct_retreatment", name: "Root Canal Retreatment" },
-    ],
-  },
-  {
-    id: "oral_surgery",
-    name: "Oral Surgery (Extraction/XLA)",
-    items: [
-      { id: "extraction_simple", name: "Extraction - Simple" },
-      { id: "open_disimpaction", name: "Open Disimpaction" },
-      { id: "closed_disimpaction", name: "Closed Disimpaction" },
+      { id: "consultation", name: "Consultation", price: 1000 },
     ],
   },
   {
     id: "restorative",
-    name: "Restorative (Filling)",
+    name: "Restorative",
     items: [
-      { id: "filling_amalgam", name: "Filling - Amalgam" },
-      { id: "filling_composite", name: "Filling - Composite" },
+      { id: "filling", name: "Filling", price: 5000 },
+      { id: "rct_anterior", name: "Root Canal Treatment - Anterior", price: 12000 },
+      { id: "rct_premolars", name: "Root Canal Treatment - Premolars", price: 15000 },
+      { id: "rct_molars", name: "Root Canal Treatment - Molars", price: 15000 },
+      { id: "indirect_pulp_capping", name: "Indirect Pulp Capping", price: 6000 },
+      { id: "direct_pulp_capping", name: "Direct Pulp Capping", price: 6000 },
+      { id: "fissure_sealant", name: "Fissure Sealant (Per Tooth)", price: 3000 },
     ],
   },
   {
     id: "cosmetic",
     name: "Cosmetic",
-    items: [{ id: "bleaching", name: "Bleaching" }],
+    items: [
+      { id: "masking", name: "Masking - Per Tooth", price: 5000 },
+      { id: "bleaching", name: "Bleaching (Upper or Lower)", price: 20000 },
+      { id: "tooth_gem", name: "Tooth Gem (Per Gem)", price: 1000 },
+    ],
+  },
+  {
+    id: "periodontal",
+    name: "Periodontal",
+    items: [
+      { id: "scaling", name: "Scaling", price: 5000 },
+      { id: "polishing", name: "Polishing", price: 2000 },
+      { id: "scaling_polishing", name: "Scaling & Polishing", price: 7000 }, // IMPLIED sum or package? List says Scaling 5k, Polishing 2k.
+      { id: "deep_cleaning", name: "Deep Cleaning", price: 10000 },
+      { id: "fluoride_therapy", name: "Fluoride Therapy", price: 5000 },
+    ],
   },
   {
     id: "orthodontics",
     name: "Orthodontics",
-    items: [{ id: "ortho_review", name: "Ortho - Review" }],
+    items: [
+      { id: "ortho_consultation", name: "Ortho Consultation", price: 3000 },
+      { id: "braces", name: "Braces (Per Jaw)", price: 75000 }, // Range 75k-100k
+      { id: "retainers", name: "Retainers", price: 10000 },
+      { id: "study_models", name: "Study Models", price: 2000 },
+      { id: "braces_removal", name: "Braces Removal (Per Jaw)", price: 10000 },
+      { id: "ortho_appliance", name: "Orthodontic Appliance (Per Jaw)", price: 30000 },
+      { id: "ext_ortho_review", name: "External Ortho Reviews", price: 3000 },
+      { id: "bracket_replacement", name: "Bracket Replacement (Per Backet)", price: 2000 },
+    ],
   },
   {
-    id: "periodontics",
-    name: "Periodontics",
+    id: "oral_surgery",
+    name: "Oral Surgery",
     items: [
-      { id: "fms_scaling_polishing", name: "Full Mouth Scaling & Polishing" },
-      { id: "fluoride_therapy", name: "Fluoride Therapy" },
+      { id: "extraction_adult", name: "Extraction (Adults)", price: 2500 },
+      { id: "extraction_child", name: "Extraction (Kids)", price: 2000 },
+      { id: "dry_socket", name: "Dry Socket", price: 3000 },
+      { id: "operculectomy", name: "Operculectomy", price: 4000 },
+      { id: "open_disimpaction", name: "Open Disimpaction", price: 15000 },
+      { id: "closed_disimpaction", name: "Closed Disimpaction", price: 5000 },
+      { id: "incision_drainage", name: "Incision & Drainage", price: 5000 },
+      { id: "splinting", name: "Splinting", price: 7000 },
+      { id: "mmf_fracture", name: "MMF / Jaw Fracture Fixation", price: 50000 },
+      { id: "implant", name: "Implant", price: 200000 },
+    ],
+  },
+  {
+    id: "prosthodontics",
+    name: "Prosthodontics",
+    items: [
+      { id: "crown_pfm", name: "Crown - PFM", price: 25000 },
+      { id: "crown_emax", name: "Crown - Emax", price: 30000 },
+      { id: "crown_zirconia", name: "Crown - Zirconia", price: 40000 },
+      { id: "crown_recement", name: "Crown Recementing", price: 3000 },
+      { id: "complete_denture", name: "Complete Denture (Per Jaw)", price: 25000 },
+      { id: "rpd_1st", name: "RPD (1st Tooth)", price: 10000 },
+      { id: "rpd_add", name: "RPD (Additional Tooth)", price: 2000 },
+      { id: "veneers", name: "Veneers (Per Tooth)", price: 25000 },
+      { id: "flex_denture", name: "Flexible Denture (Per Jaw)", price: 40000 },
+      { id: "night_guard", name: "Night Guard", price: 10000 },
+    ],
+  },
+  {
+    id: "kids_procedures",
+    name: "Kids Procedures",
+    items: [
+      { id: "pulpectomy", name: "Pulpectomy", price: 10000 },
+      { id: "pulpotomy", name: "Pulpotomy", price: 8000 },
+      { id: "space_maintainer", name: "Space Maintainer", price: 10000 },
+      { id: "ss_crown", name: "SS Crown (Per Tooth)", price: 10000 },
+    ],
+  },
+  {
+    id: "imaging",
+    name: "Imaging",
+    items: [
+      { id: "iopa", name: "IOPA", price: 1000 },
+      { id: "opg", name: "OPG", price: 1000 },
+      { id: "cbct", name: "CBCT", price: 4500 },
+      { id: "lat_ceph", name: "Lateral Ceph", price: 2500 },
+      { id: "bitewing", name: "Bitewing (Left or Right)", price: 1000 },
+      { id: "bi_bitewing", name: "Bilateral Bitewing", price: 2000 },
     ],
   },
 ];
@@ -99,13 +154,46 @@ export default function Clinic() {
 
   // Tooth selection state
   const [selectedTeeth, setSelectedTeeth] = useState<Set<number>>(new Set());
+  const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [isChildDentition, setIsChildDentition] = useState(false);
   const [showInventoryModal, setShowInventoryModal] = useState(false);
+  const [timeFilter, setTimeFilter] = useState<TimeRange>('Today');
+
+  const filteredByTime = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    return patients.filter(p => {
+      if (!p.created_at) return true;
+      const d = new Date(p.created_at);
+      if (timeFilter === 'Today') return d >= today;
+      const diffDays = (today.getTime() - d.getTime()) / (1000 * 60 * 60 * 24);
+      if (timeFilter === 'Weekly') return diffDays <= 7;
+      if (timeFilter === 'Monthly') return diffDays <= 30;
+      if (timeFilter === 'Quarterly') return diffDays <= 90;
+      return true;
+    });
+  }, [patients, timeFilter]);
 
   // Derived state
-  const activePatients = useMemo(() => patients.filter(p => p.status === 'active'), [patients]);
+  const activePatients = useMemo(() => filteredByTime.filter(p => p.status === 'active'), [filteredByTime]);
   // CHANGED: Include 'lab' status in this table so doctors can see them
-  const completedPatients = useMemo(() => patients.filter(p => p.status === 'completed' || p.status === 'lab'), [patients]);
+  const completedPatients = useMemo(() => filteredByTime.filter(p => p.status === 'completed' || p.status === 'lab'), [filteredByTime]);
+
+  const calculatedTotal = useMemo(() => {
+    let total = 0;
+    for (const id of Array.from(selected)) {
+      const qty = quantities[id] || 1;
+      for (const cat of PROCEDURES) {
+        const found = cat.items.find(i => i.id === id);
+        if (found) {
+          total += found.price * qty;
+          break;
+        }
+      }
+    }
+    return total;
+  }, [selected, quantities]);
 
   // Fetch walk-ins on mount
   useEffect(() => {
@@ -145,6 +233,12 @@ export default function Clinic() {
   const clearAll = () => {
     setSelected(new Set());
     setSelectedTeeth(new Set());
+    setQuantities({});
+  };
+
+  const handleQuantityChange = (id: string, val: string) => {
+    const qty = parseInt(val) || 1;
+    setQuantities(prev => ({ ...prev, [id]: Math.max(1, qty) }));
   };
 
   const toggleTooth = (t: number) => {
@@ -167,25 +261,31 @@ export default function Clinic() {
     const teethString = selectedTeeth.size > 0 ? ` (${Array.from(selectedTeeth).sort((a, b) => a - b).join(', ')})` : "";
 
     // Procedure list from IDs to Names
+    let calculatedCost = 0;
     const procedureNames = Array.from(selected).map(id => {
+      const qty = quantities[id] || 1;
       for (const cat of PROCEDURES) {
         const found = cat.items.find(i => i.id === id);
-        if (found) return found.name + teethString;
+        if (found) {
+          calculatedCost += found.price * qty;
+          return `${found.name}${teethString}${qty > 1 ? ` (x${qty})` : ''}`;
+        }
       }
-      return id + teethString;
+      return `${id}${teethString}${qty > 1 ? ` (x${qty})` : ''}`;
     });
 
     const success = await updateWalkin(selectedPatient.no, {
       status: nextStatus,
       procedure: procedureNames,
       doc_name: doctorName || 'Unknown',
+      clinic_cost: calculatedCost, // Update clinic cost automatically
     });
 
     if (success) {
       // Refresh local state to move patient
       setPatients(prev => prev.map(p =>
         p.no === selectedPatient.no
-          ? { ...p, status: nextStatus, procedure: procedureNames, doc_name: doctorName }
+          ? { ...p, status: nextStatus, procedure: procedureNames, doc_name: doctorName, clinic_cost: calculatedCost }
           : p
       ));
 
@@ -196,6 +296,7 @@ export default function Clinic() {
       setDoctorName("");
       setNotes("");
       setSelectedTeeth(new Set());
+      setQuantities({});
     } else {
       alert("Failed to assign procedures.");
     }
@@ -204,11 +305,27 @@ export default function Clinic() {
   return (
     <div className="p-6 space-y-6">
       {/* --- ADDED: Overview header + dashboard sections (keeps original styling) --- */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-slate-800">Clinic</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Manage clinical operations: patient queue, treatments, and lab work.
-        </p>
+      <div className="p-6 space-y-8 max-w-[1600px] mx-auto">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Clinical Dashboard</h1>
+            <p className="text-gray-500 mt-1">Manage patient treatments and assignments</p>
+          </div>
+          <div className="flex items-center gap-3 bg-white p-2 px-4 rounded-xl border border-gray-100 shadow-sm">
+            <label className="text-sm font-semibold text-gray-700 whitespace-nowrap">View Range:</label>
+            <select
+              value={timeFilter}
+              onChange={(e) => setTimeFilter(e.target.value as TimeRange)}
+              className="border-none rounded-lg px-3 py-2 text-sm bg-gray-50 font-medium text-gray-900 focus:ring-2 focus:ring-blue-500 cursor-pointer transition-all min-w-[140px]"
+            >
+              <option value="Today">Today Only</option>
+              <option value="Weekly">Weekly (7 Days)</option>
+              <option value="Monthly">Monthly (30 Days)</option>
+              <option value="Quarterly">Quarterly (90 Days)</option>
+              <option value="All">All Time</option>
+            </select>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -227,7 +344,7 @@ export default function Clinic() {
                   <th className="p-2">DOB</th>
                   <th className="p-2">CONTACTS</th>
                   <th className="p-2">RES</th>
-                  <th className="p-2">OP</th>
+                  <th className="p-2">Insurance</th>
                 </tr>
               </thead>
               <tbody>
@@ -313,14 +430,29 @@ export default function Clinic() {
               </div>
               <div className="mt-3 space-y-2">
                 {cat.items.map((item) => (
-                  <label key={item.id} className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={selected.has(item.id)}
-                      onChange={() => toggleItem(item.id)}
-                    />
-                    {item.name}
-                  </label>
+                  <div key={item.id} className="flex items-center justify-between">
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={selected.has(item.id)}
+                        onChange={() => toggleItem(item.id)}
+                      />
+                      <span className="text-sm">{item.name}</span>
+                    </label>
+                    {selected.has(item.id) && (
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-slate-500">Qty:</span>
+                        <input
+                          type="number"
+                          min="1"
+                          className="w-12 px-1 py-0.5 border rounded text-xs text-center"
+                          value={quantities[item.id] || 1}
+                          onChange={(e) => handleQuantityChange(item.id, e.target.value)}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </div>
+                    )}
+                  </div>
                 ))}
               </div>
             </div>
@@ -434,45 +566,49 @@ export default function Clinic() {
         />
       </div>
 
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between bg-blue-50 p-4 rounded-lg border border-blue-100">
         <div className="text-sm text-gray-600">
-          Selected: {selectedCount}
+          Selected: <span className="font-semibold text-gray-900">{selectedCount}</span> items
         </div>
+        <div className="text-right">
+          <span className="text-sm text-gray-500 mr-2">Estimated Total:</span>
+          <span className="text-2xl font-bold text-blue-700">Ksh {calculatedTotal.toLocaleString()}</span>
+        </div>
+      </div>
 
-        <div className="flex items-center gap-2">
-          <select
-            className="border rounded px-3 py-2 text-sm"
-            value={doctorName}
-            onChange={e => setDoctorName(e.target.value)}
-          >
-            <option value="">Select Doctor (Required)</option>
-            {DOCTORS.map(d => <option key={d} value={d}>{d}</option>)}
-          </select>
-          <button
-            type="button"
-            onClick={() => setShowInventoryModal(true)}
-            disabled={!selectedPatient}
-            className="rounded bg-amber-600 px-4 py-2 text-white disabled:opacity-50 hover:bg-amber-700"
-          >
-            Request Supplies
-          </button>
-          <button
-            type="button"
-            onClick={() => assign('lab')}
-            disabled={!patientId || selected.size === 0}
-            className="rounded bg-indigo-600 px-4 py-2 text-white disabled:opacity-50 hover:bg-indigo-700"
-          >
-            Send to Lab
-          </button>
-          <button
-            type="button"
-            onClick={() => assign('completed')}
-            disabled={!patientId || selected.size === 0}
-            className="rounded bg-green-600 px-4 py-2 text-white disabled:opacity-50 hover:bg-green-700"
-          >
-            To Front Office
-          </button>
-        </div>
+      <div className="flex items-center justify-end gap-2">
+        <select
+          className="border rounded px-3 py-2 text-sm"
+          value={doctorName}
+          onChange={e => setDoctorName(e.target.value)}
+        >
+          <option value="">Select Doctor (Required)</option>
+          {DOCTORS.map(d => <option key={d} value={d}>{d}</option>)}
+        </select>
+        <button
+          type="button"
+          onClick={() => setShowInventoryModal(true)}
+          disabled={!selectedPatient}
+          className="rounded bg-amber-600 px-4 py-2 text-white disabled:opacity-50 hover:bg-amber-700"
+        >
+          Request Supplies
+        </button>
+        <button
+          type="button"
+          onClick={() => assign('lab')}
+          disabled={!patientId || selected.size === 0}
+          className="rounded bg-indigo-600 px-4 py-2 text-white disabled:opacity-50 hover:bg-indigo-700"
+        >
+          Send to Lab
+        </button>
+        <button
+          type="button"
+          onClick={() => assign('completed')}
+          disabled={!patientId || selected.size === 0}
+          className="rounded bg-green-600 px-4 py-2 text-white disabled:opacity-50 hover:bg-green-700"
+        >
+          To Front Office
+        </button>
       </div>
 
       {/* Inventory Request Modal */}
@@ -497,12 +633,13 @@ export default function Clinic() {
               <th className="py-2">PATIENT</th>
               <th className="py-2">PROCEDURE</th>
               <th className="py-2">DOCTOR</th>
+              <th className="py-2">COST</th>
               <th className="py-2">STATUS</th>
             </tr>
           </thead>
           <tbody className="text-sm text-slate-700">
             {completedPatients.length === 0 ? (
-              <tr><td colSpan={5} className="py-4 text-center text-gray-500">No completed treatments yet.</td></tr>
+              <tr><td colSpan={6} className="py-4 text-center text-gray-500">No completed treatments yet.</td></tr>
             ) : (
               completedPatients.map(p => (
                 <tr key={p.no} className="border-b last:border-0 hover:bg-slate-50">
@@ -510,6 +647,7 @@ export default function Clinic() {
                   <td className="py-2 font-medium">{p.name}</td>
                   <td className="py-2">{p.procedure?.join(", ") || "-"}</td>
                   <td className="py-2">{p.doc_name || "-"}</td>
+                  <td className="py-2">Ksh {p.clinic_cost?.toLocaleString() || '0'}</td>
                   <td className="py-2">
                     <span className={`rounded-full px-2 py-1 text-xs capitalize ${p.status === 'lab'
                       ? 'bg-yellow-100 text-yellow-800'
@@ -524,6 +662,6 @@ export default function Clinic() {
           </tbody>
         </table>
       </section>
-    </div>
+    </div >
   );
 }
