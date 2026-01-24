@@ -49,6 +49,10 @@ export interface PatientRecord {
   // ADD: Installment tracking
   installments?: InstallmentPayment[];
   created_at?: string;
+  card_image_url?: string;
+  consent_form_url?: string;
+  opg_document_url?: string;
+  clinic_notes?: string; // Notes from front office sent to clinic
 }
 
 export interface WalkinInput {
@@ -60,6 +64,7 @@ export interface WalkinInput {
   op: string;
   dr?: string;
   ins?: string;
+  clinic_notes?: string; // Notes from front office sent to clinic
 }
 
 const WALKINS_TABLE = "walkins";
@@ -110,7 +115,10 @@ export async function listWalkins(): Promise<PatientRecord[]> {
     price_locked_by: row.price_locked_by ?? undefined,
     // Installment tracking
     installments: row.installments ?? [],
-    created_at: row.created_at ?? undefined,
+    card_image_url: row.card_image_url ?? undefined,
+    consent_form_url: row.consent_form_url ?? undefined,
+    opg_document_url: row.opg_document_url ?? undefined,
+    clinic_notes: row.clinic_notes ?? undefined,
   }));
 }
 
@@ -139,6 +147,7 @@ export async function createWalkin(input: WalkinInput, dob?: string): Promise<Pa
       op: input.op,
       dr: input.dr,
       ins: input.ins,
+      clinic_notes: input.clinic_notes,
       dob,
       newId: nowNo,
     };
@@ -170,6 +179,7 @@ export async function createWalkin(input: WalkinInput, dob?: string): Promise<Pa
     cash_amount: 0,
     balance: 0,
     to_come_again: false,
+    clinic_notes: row.clinic_notes ?? input.clinic_notes ?? undefined,
   };
 }
 

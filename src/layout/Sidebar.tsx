@@ -10,16 +10,16 @@ const activeClass =
   "bg-slate-800 text-white";
 
 function Sidebar() {
-  const [labOpen, setLabOpen] = useState(true);
+  const [labOpen, setLabOpen] = useState(false);
 
   // New: collapsible state for Human Resources
-  const [hrOpen, setHrOpen] = useState(true);
+  const [hrOpen, setHrOpen] = useState(false);
 
   // New: collapsible state for Daily Reports
-  const [reportsOpen, setReportsOpen] = useState(true);
+  const [reportsOpen, setReportsOpen] = useState(false);
 
   // New: collapsible state for Sales & Billing
-  const [salesOpen, setSalesOpen] = useState(true);
+  const [salesOpen, setSalesOpen] = useState(false);
 
   return (
     // changed: dark sidebar background + light text + darker border

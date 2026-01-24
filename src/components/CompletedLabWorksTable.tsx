@@ -13,6 +13,8 @@ interface EditFormData {
     insurance_amount: number;
     cash_amount: number;
     to_come_again: boolean;
+    card_image_url: string;
+    consent_form_url: string;
 }
 
 interface NewInstallment {
@@ -28,7 +30,9 @@ const CompletedLabWorksTable: React.FC<CompletedLabWorksTableProps> = ({ patient
         clinic_cost: 0,
         insurance_amount: 0,
         cash_amount: 0,
-        to_come_again: false
+        to_come_again: false,
+        card_image_url: '',
+        consent_form_url: ''
     });
     const [isSaving, setIsSaving] = useState(false);
 
@@ -44,15 +48,6 @@ const CompletedLabWorksTable: React.FC<CompletedLabWorksTableProps> = ({ patient
 
     const filteredPatients = patients; // No internal filtering, handle it at parent level
 
-    const formatDOB = (dob?: string) => {
-        if (!dob) return "—";
-        const d = new Date(dob);
-        if (isNaN(d.getTime())) return dob;
-        const yyyy = d.getFullYear();
-        const mm = String(d.getMonth() + 1).padStart(2, "0");
-        const dd = String(d.getDate()).padStart(2, "0");
-        return `${yyyy}-${mm}-${dd}`;
-    };
 
     const getAge = (p: PatientRecord) => {
         if (p.dob) {
@@ -94,16 +89,32 @@ const CompletedLabWorksTable: React.FC<CompletedLabWorksTableProps> = ({ patient
             clinic_cost: p.clinic_cost || 0,
             insurance_amount: p.insurance_amount || 0,
             cash_amount: p.cash_amount || 0,
-            to_come_again: p.to_come_again || false
+            to_come_again: p.to_come_again || false,
+            card_image_url: p.card_image_url || '',
+            consent_form_url: p.consent_form_url || ''
         });
         setLocalInstallments(p.installments || []);
     };
 
     const handleCloseModal = () => {
         setEditingPatient(null);
-        setFormData({ clinic_cost: 0, insurance_amount: 0, cash_amount: 0, to_come_again: false });
+        setFormData({
+            clinic_cost: 0, insurance_amount: 0, cash_amount: 0, to_come_again: false,
+            card_image_url: '', consent_form_url: ''
+        });
         setLocalInstallments([]);
         setShowInstallmentModal(false);
+    };
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, field: 'card_image_url' | 'consent_form_url') => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setFormData(prev => ({ ...prev, [field]: reader.result as string }));
+        };
+        reader.readAsDataURL(file);
     };
 
     const handleAddInstallment = () => {
@@ -167,7 +178,252 @@ const CompletedLabWorksTable: React.FC<CompletedLabWorksTableProps> = ({ patient
         }
     };
 
-    // Print receipt function
+    // Print invoice function (for insurance claims)
+    const printInvoice = (p: PatientRecord) => {
+        // Invoice is only used when insurance is covering
+        if (!p.insurance_amount || p.insurance_amount <= 0) {
+            alert("Invoice is only generated for insurance-covered treatments. This patient has no insurance amount.");
+            return;
+        }
+
+        const invoiceWindow = window.open("", "_blank");
+        if (!invoiceWindow) {
+            alert("Please allow pop-ups to print invoices");
+            return;
+        }
+
+        const now = new Date();
+        const printDate = now.toLocaleDateString("en-KE", { day: "2-digit", month: "short", year: "numeric" });
+        const printTime = now.toLocaleTimeString("en-KE", { hour: "2-digit", minute: "2-digit" });
+        const voucherNo = `VCH-${String(p.no).padStart(6, '0')}`;
+        const ngNo = String(p.no).padStart(7, '0');
+
+        // Build procedure rows
+        const procedures = p.procedure || [];
+        const procedureRows = procedures.map((proc, idx) => {
+            const qty = 1;
+            const charge = Math.round((p.clinic_cost || 0) / procedures.length);
+            const netAmt = charge;
+            return `
+                <tr>
+                    <td>${idx + 1}</td>
+                    <td>${proc}</td>
+                    <td style="text-align: right;">${charge.toLocaleString()}</td>
+                    <td style="text-align: center;">${qty}</td>
+                    <td style="text-align: right;">${charge.toLocaleString()}</td>
+                    <td style="text-align: right;">0.00</td>
+                    <td style="text-align: right;">${netAmt.toLocaleString()}</td>
+                </tr>
+            `;
+        }).join("");
+
+        const totalGross = p.clinic_cost || 0;
+        const totalNet = p.insurance_amount || 0;
+        const patientTotal = (p.cash_amount || 0);
+        const sponsorTotal = p.insurance_amount || 0;
+
+        const invoiceHtml = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Invoice - ${voucherNo}</title>
+                <style>
+                    * { margin: 0; padding: 0; box-sizing: border-box; }
+                    body { 
+                        font-family: 'Courier New', monospace; 
+                        font-size: 12px;
+                        padding: 20px; 
+                        max-width: 800px; 
+                        margin: 0 auto;
+                        color: #000;
+                    }
+                    .header { 
+                        display: flex;
+                        align-items: center;
+                        margin-bottom: 15px; 
+                        border-bottom: 1px solid #000;
+                        padding-bottom: 10px;
+                    }
+                    .logo { 
+                        width: 60px; 
+                        height: 60px; 
+                        margin-right: 15px;
+                    }
+                    .header-text {
+                        flex: 1;
+                        text-align: center;
+                    }
+                    .company-name { 
+                        font-size: 18px; 
+                        font-weight: bold; 
+                    }
+                    .company-info { font-size: 11px; line-height: 1.4; }
+                    .invoice-title { 
+                        text-align: center; 
+                        font-size: 14px; 
+                        font-weight: bold; 
+                        margin: 15px 0;
+                        text-decoration: underline;
+                    }
+                    .info-grid { 
+                        display: grid; 
+                        grid-template-columns: 1fr 1fr; 
+                        gap: 5px;
+                        margin-bottom: 15px;
+                    }
+                    .info-row { display: flex; }
+                    .info-label { width: 100px; font-weight: bold; }
+                    .info-value { }
+                    table { 
+                        width: 100%; 
+                        border-collapse: collapse; 
+                        margin: 15px 0; 
+                        font-size: 11px;
+                    }
+                    th, td { 
+                        border: 1px solid #000; 
+                        padding: 4px 6px; 
+                    }
+                    th { background: #f0f0f0; font-weight: bold; }
+                    .totals { margin-top: 10px; }
+                    .totals-row { 
+                        display: flex; 
+                        justify-content: space-between; 
+                        padding: 3px 0;
+                        border-bottom: 1px dotted #ccc;
+                    }
+                    .totals-row.final { 
+                        font-weight: bold; 
+                        border-bottom: 2px solid #000;
+                        border-top: 1px solid #000;
+                        padding: 5px 0;
+                    }
+                    .signature { margin-top: 30px; }
+                    .no-print { margin-top: 20px; text-align: center; }
+                    .watermark {
+                        position: fixed;
+                        top: 50%;
+                        left: 50%;
+                        transform: translate(-50%, -50%);
+                        opacity: 0.08;
+                        z-index: -1;
+                        pointer-events: none;
+                    }
+                    .watermark img {
+                        width: 300px;
+                        height: 300px;
+                    }
+                    @media print {
+                        body { padding: 10px; }
+                        .no-print { display: none; }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="watermark">
+                    <img src="/logo.png" alt="Watermark" />
+                </div>
+                <div class="header">
+                    <img class="logo" src="/logo.png" alt="Logo" />
+                    <div class="header-text">
+                        <div class="company-name">Aquadent Dental Clinic, Eldoret</div>
+                        <div class="company-info">
+                            P.O. Box 1234, Eldoret. Telephone: 053-2030000, 0722-000000<br>
+                            Mobile: 0722 000000, 0733 000000 Fax: 053-2030001<br>
+                            E-mail: info@aquadent.co.ke
+                        </div>
+                    </div>
+                </div>
+
+                <div class="invoice-title">SALE INVOICE</div>
+
+                <div class="info-grid">
+                    <div>
+                        <div class="info-row"><span class="info-label">Print Dt:</span> <span class="info-value">${printDate} ${printTime}</span></div>
+                        <div class="info-row"><span class="info-label">Voucher Bt.:</span> <span class="info-value">${printDate}</span></div>
+                        <div class="info-row"><span class="info-label">Ks No.:</span> <span class="info-value">${ngNo}</span></div>
+                        <div class="info-row"><span class="info-label">Name:</span> <span class="info-value">${p.name?.toUpperCase()}</span></div>
+                        <div class="info-row"><span class="info-label">Ref.By:</span> <span class="info-value">${p.doc_name || 'DOCTOR'}</span></div>
+                        <div class="info-row"><span class="info-label">Pre.Dbc.:</span> <span class="info-value">${p.doc_name || 'DOCTOR'}</span></div>
+                        <div class="info-row"><span class="info-label">Srcl.:</span> <span class="info-value">Aquadent Dental Center OPD</span></div>
+                        <div class="info-row"><span class="info-label">Pat. Typ:</span> <span class="info-value">CREDIT</span></div>
+                        <div class="info-row"><span class="info-label">Order No:</span> <span class="info-value">${ngNo}</span></div>
+                    </div>
+                    <div>
+                        <div class="info-row"><span class="info-label">Voucher No.:</span> <span class="info-value">${voucherNo}</span></div>
+                        <div class="info-row"><span class="info-label">Corporate:</span> <span class="info-value">${p.op || 'INSURANCE'}</span></div>
+                        <div class="info-row"><span class="info-label">Scheme:</span> <span class="info-value">${p.op || 'INSURANCE'}</span></div>
+                        <div class="info-row"><span class="info-label">Trans.auth.no:</span> <span class="info-value">-</span></div>
+                        <div class="info-row"><span class="info-label">Agr - No:</span> <span class="info-value">-</span></div>
+                        <div class="info-row"><span class="info-label">Emp No:</span> <span class="info-value">SM</span></div>
+                    </div>
+                </div>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>No.</th>
+                            <th>Service Name</th>
+                            <th>Charge</th>
+                            <th>Qty</th>
+                            <th>Total</th>
+                            <th>Net Disc</th>
+                            <th>Net Amt</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${procedureRows || `<tr><td colspan="7" style="text-align: center;">No procedures</td></tr>`}
+                    </tbody>
+                    <tfoot>
+                        <tr style="font-weight: bold; background: #f0f0f0;">
+                            <td colspan="4" style="text-align: right;">Total Gross Art</td>
+                            <td style="text-align: right;">${totalGross.toLocaleString()}</td>
+                            <td></td>
+                            <td style="text-align: right;">${totalNet.toLocaleString()}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+
+                <div class="totals">
+                    <div class="totals-row"><span>Patient Total</span><span>${patientTotal.toLocaleString()}</span></div>
+                    <div class="totals-row"><span>Sponsor Total</span><span>${sponsorTotal.toLocaleString()}</span></div>
+                    <div class="totals-row final"><span>Total</span><span>${(patientTotal + sponsorTotal).toLocaleString()}</span></div>
+                </div>
+
+                <div class="signature">
+                    <p>User: FRONTOFFICE</p>
+                </div>
+
+                <div class="no-print">
+                    <button onclick="window.print()" style="
+                        background: #2563eb;
+                        color: white;
+                        border: none;
+                        padding: 10px 25px;
+                        font-size: 14px;
+                        border-radius: 5px;
+                        cursor: pointer;
+                        margin-right: 10px;
+                    ">🖨️ Print Invoice</button>
+                    <button onclick="window.close()" style="
+                        background: #6b7280;
+                        color: white;
+                        border: none;
+                        padding: 10px 25px;
+                        font-size: 14px;
+                        border-radius: 5px;
+                        cursor: pointer;
+                    ">Close</button>
+                </div>
+            </body>
+            </html>
+        `;
+
+        invoiceWindow.document.write(invoiceHtml);
+        invoiceWindow.document.close();
+    };
+
+    // Print receipt function (for cash payments)
     const printReceipt = (p: PatientRecord) => {
         const receiptWindow = window.open("", "_blank");
         if (!receiptWindow) {
@@ -179,13 +435,13 @@ const CompletedLabWorksTable: React.FC<CompletedLabWorksTableProps> = ({ patient
             year: "numeric", month: "long", day: "numeric"
         });
 
-        const invoiceNumber = `INV-${String(p.no).padStart(6, '0')}`;
+        const invoiceNumber = `RCP-${String(p.no).padStart(6, '0')}`;
         const totalCost = (p.lab_cost || 0) + (p.clinic_cost || 0);
         const installmentsTotal = calculateInstallmentsTotal(p.installments || []);
         const balance = calculateBalance(p);
 
         const installmentsHtml = (p.installments || []).length > 0 ? `
-            <div class="section-title">Installment Payments</div>
+            <div class="section-title">INSTALLMENT PAYMENTS</div>
             <table>
                 <thead>
                     <tr>
@@ -198,21 +454,15 @@ const CompletedLabWorksTable: React.FC<CompletedLabWorksTableProps> = ({ patient
                 <tbody>
                     ${(p.installments || []).map(inst => `
                         <tr>
-                            <td style="padding: 8px; border-bottom: 1px solid #eee;">
-                                ${new Date(inst.paid_at).toLocaleDateString("en-KE")}
-                            </td>
-                            <td style="padding: 8px; border-bottom: 1px solid #eee;">${inst.payment_method}</td>
-                            <td style="padding: 8px; border-bottom: 1px solid #eee;">${inst.receipt_no || "-"}</td>
-                            <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">
-                                Ksh ${inst.amount.toLocaleString()}
-                            </td>
+                            <td>${new Date(inst.paid_at).toLocaleDateString("en-KE")}</td>
+                            <td>${inst.payment_method}</td>
+                            <td>${inst.receipt_no || "-"}</td>
+                            <td style="text-align: right;">Ksh ${inst.amount.toLocaleString()}</td>
                         </tr>
                     `).join("")}
-                    <tr style="background: #f8fafc;">
-                        <td colspan="3" style="padding: 8px; font-weight: 600;">Total Installments</td>
-                        <td style="padding: 8px; text-align: right; font-weight: 600;">
-                            Ksh ${installmentsTotal.toLocaleString()}
-                        </td>
+                    <tr class="total-row">
+                        <td colspan="3"><strong>Total Installments</strong></td>
+                        <td style="text-align: right;"><strong>Ksh ${installmentsTotal.toLocaleString()}</strong></td>
                     </tr>
                 </tbody>
             </table>
@@ -223,248 +473,490 @@ const CompletedLabWorksTable: React.FC<CompletedLabWorksTableProps> = ({ patient
             <html>
             <head>
                 <title>Receipt - ${invoiceNumber}</title>
+                <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
                 <style>
                     * { margin: 0; padding: 0; box-sizing: border-box; }
+                    
                     body { 
-                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-                        padding: 40px; 
-                        max-width: 800px; 
-                        margin: 0 auto;
-                        color: #333;
+                        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; 
+                        padding: 0;
+                        margin: 0;
+                        background: #f5f5f5;
+                        color: #1a1a1a;
+                        line-height: 1.5;
                     }
-                    .header { 
-                        text-align: center; 
-                        margin-bottom: 30px; 
-                        padding-bottom: 20px;
-                        border-bottom: 2px solid #2563eb;
+                    
+                    .receipt-container {
+                        max-width: 800px;
+                        margin: 20px auto;
+                        background: white;
+                        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
                     }
-                    .logo { 
-                        font-size: 28px; 
-                        font-weight: bold; 
-                        color: #2563eb; 
-                        margin-bottom: 5px;
+                    
+                    /* Header with red theme */
+                    .header {
+                        background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+                        color: white;
+                        padding: 35px 40px;
+                        position: relative;
+                        overflow: hidden;
                     }
-                    .subtitle { color: #666; font-size: 14px; }
-                    .invoice-info {
+                    
+                    .header::before {
+                        content: '';
+                        position: absolute;
+                        top: -50%;
+                        right: -20%;
+                        width: 400px;
+                        height: 400px;
+                        background: rgba(255,255,255,0.05);
+                        border-radius: 50%;
+                    }
+                    
+                    .header::after {
+                        content: '';
+                        position: absolute;
+                        bottom: -60%;
+                        left: -10%;
+                        width: 300px;
+                        height: 300px;
+                        background: rgba(255,255,255,0.03);
+                        border-radius: 50%;
+                    }
+                    
+                    .header-content {
+                        position: relative;
+                        z-index: 1;
                         display: flex;
                         justify-content: space-between;
-                        margin-bottom: 30px;
-                        background: #f8fafc;
-                        padding: 20px;
-                        border-radius: 8px;
+                        align-items: flex-start;
                     }
-                    .invoice-info div { line-height: 1.8; }
-                    .label { color: #666; font-size: 12px; text-transform: uppercase; }
-                    .value { font-weight: 600; color: #333; }
-                    .section-title { 
-                        font-size: 14px; 
-                        font-weight: 600; 
-                        color: #2563eb;
-                        margin: 25px 0 15px;
+                    
+                    .brand {
+                        display: flex;
+                        align-items: center;
+                        gap: 15px;
+                    }
+                    
+                    .brand-icon {
+                        width: 60px;
+                        height: 60px;
+                        background: white;
+                        border-radius: 12px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-size: 32px;
+                    }
+                    
+                    .brand-text h1 {
+                        font-size: 24px;
+                        font-weight: 700;
+                        margin-bottom: 4px;
+                        letter-spacing: -0.5px;
+                    }
+                    
+                    .brand-text p {
+                        font-size: 13px;
+                        opacity: 0.9;
+                        font-weight: 400;
+                    }
+                    
+                    .receipt-badge {
+                        background: rgba(255,255,255,0.2);
+                        backdrop-filter: blur(10px);
+                        padding: 12px 24px;
+                        border-radius: 8px;
+                        text-align: right;
+                    }
+                    
+                    .receipt-badge .label {
+                        font-size: 11px;
+                        text-transform: uppercase;
+                        letter-spacing: 1px;
+                        opacity: 0.8;
+                        margin-bottom: 4px;
+                    }
+                    
+                    .receipt-badge .number {
+                        font-size: 18px;
+                        font-weight: 700;
+                    }
+                    
+                    /* Content area */
+                    .content {
+                        padding: 40px;
+                    }
+                    
+                    /* Info grid */
+                    .info-grid {
+                        display: grid;
+                        grid-template-columns: 1fr 1fr;
+                        gap: 30px;
+                        margin-bottom: 35px;
+                        padding-bottom: 30px;
+                        border-bottom: 1px solid #eee;
+                    }
+                    
+                    .info-card {
+                        background: #fafafa;
+                        padding: 20px;
+                        border-radius: 10px;
+                        border-left: 4px solid #dc2626;
+                    }
+                    
+                    .info-card h3 {
+                        font-size: 11px;
+                        text-transform: uppercase;
+                        letter-spacing: 1px;
+                        color: #888;
+                        margin-bottom: 12px;
+                        font-weight: 600;
+                    }
+                    
+                    .info-card .name {
+                        font-size: 18px;
+                        font-weight: 700;
+                        color: #1a1a1a;
+                        margin-bottom: 4px;
+                    }
+                    
+                    .info-card .detail {
+                        font-size: 14px;
+                        color: #666;
+                    }
+                    
+                    .info-card .patient-no {
+                        display: inline-block;
+                        background: #dc2626;
+                        color: white;
+                        padding: 4px 12px;
+                        border-radius: 20px;
+                        font-size: 12px;
+                        font-weight: 600;
+                        margin-top: 10px;
+                    }
+                    
+                    /* Section styling */
+                    .section {
+                        margin-bottom: 30px;
+                    }
+                    
+                    .section-title {
+                        font-size: 12px;
+                        font-weight: 700;
+                        color: #dc2626;
+                        text-transform: uppercase;
+                        letter-spacing: 1.5px;
+                        margin-bottom: 15px;
+                        padding-bottom: 8px;
+                        border-bottom: 2px solid #dc2626;
+                        display: inline-block;
+                    }
+                    
+                    .procedures-box {
+                        background: linear-gradient(135deg, #fff5f5 0%, #fef2f2 100%);
+                        border: 1px solid #fecaca;
+                        padding: 20px;
+                        border-radius: 10px;
+                        line-height: 1.8;
+                        color: #1a1a1a;
+                        font-size: 14px;
+                    }
+                    
+                    /* Tables */
+                    table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        margin-bottom: 5px;
+                    }
+                    
+                    th {
+                        background: #dc2626;
+                        color: white;
+                        padding: 14px 16px;
+                        text-align: left;
+                        font-size: 11px;
                         text-transform: uppercase;
                         letter-spacing: 0.5px;
+                        font-weight: 600;
                     }
-                    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-                    th { 
-                        background: #2563eb; 
-                        color: white; 
-                        padding: 12px 8px; 
-                        text-align: left;
-                        font-size: 12px;
-                        text-transform: uppercase;
+                    
+                    th:first-child { border-radius: 8px 0 0 0; }
+                    th:last-child { border-radius: 0 8px 0 0; }
+                    
+                    td {
+                        padding: 14px 16px;
+                        border-bottom: 1px solid #f0f0f0;
+                        font-size: 14px;
                     }
-                    td { padding: 10px 8px; border-bottom: 1px solid #eee; }
-                    .procedures {
-                        background: #f8fafc;
-                        padding: 15px;
-                        border-radius: 8px;
-                        margin-bottom: 20px;
-                        line-height: 1.6;
+                    
+                    tr:hover td {
+                        background: #fafafa;
                     }
-                    .cost-breakdown {
-                        background: #f8fafc;
-                        padding: 20px;
-                        border-radius: 8px;
-                        margin-bottom: 20px;
+                    
+                    .total-row td {
+                        background: #fef2f2 !important;
+                        border-top: 2px solid #dc2626;
+                        font-weight: 600;
                     }
+                    
+                    /* Cost breakdown */
+                    .cost-card {
+                        background: #fafafa;
+                        border-radius: 12px;
+                        overflow: hidden;
+                        border: 1px solid #eee;
+                    }
+                    
                     .cost-row {
                         display: flex;
                         justify-content: space-between;
-                        padding: 8px 0;
-                        border-bottom: 1px solid #e5e7eb;
-                    }
-                    .cost-row:last-child { border-bottom: none; }
-                    .cost-row.subtotal { 
-                        font-weight: 600; 
-                        border-top: 2px solid #e5e7eb;
-                        margin-top: 10px;
-                        padding-top: 15px;
-                    }
-                    .total-section {
-                        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-                        color: white;
-                        padding: 25px;
-                        border-radius: 8px;
-                        margin-top: 30px;
-                    }
-                    .total-row {
-                        display: flex;
-                        justify-content: space-between;
-                        margin-bottom: 10px;
+                        padding: 16px 20px;
+                        border-bottom: 1px solid #eee;
                         font-size: 14px;
                     }
-                    .total-row.grand {
-                        font-size: 24px;
-                        font-weight: bold;
-                        padding-top: 15px;
-                        border-top: 1px solid rgba(255,255,255,0.3);
-                        margin-top: 15px;
-                        margin-bottom: 0;
+                    
+                    .cost-row:last-child {
+                        border-bottom: none;
                     }
-                    .balance-due {
-                        background: ${balance > 0 ? '#fef2f2' : '#f0fdf4'};
-                        border: 2px solid ${balance > 0 ? '#ef4444' : '#22c55e'};
-                        padding: 20px;
-                        border-radius: 8px;
+                    
+                    .cost-row.highlight {
+                        background: #dc2626;
+                        color: white;
+                        font-weight: 700;
+                        font-size: 16px;
+                    }
+                    
+                    .cost-row .label {
+                        color: #666;
+                    }
+                    
+                    .cost-row .amount {
+                        font-weight: 600;
+                        color: #1a1a1a;
+                    }
+                    
+                    .cost-row.highlight .label,
+                    .cost-row.highlight .amount {
+                        color: white;
+                    }
+                    
+                    /* Balance box */
+                    .balance-box {
+                        margin-top: 30px;
+                        padding: 30px;
+                        border-radius: 12px;
                         text-align: center;
-                        margin-top: 20px;
+                        background: ${balance > 0 ? 'linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)' : 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)'};
+                        border: 2px solid ${balance > 0 ? '#fca5a5' : '#86efac'};
                     }
-                    .balance-label { 
-                        font-size: 14px; 
-                        color: ${balance > 0 ? '#dc2626' : '#16a34a'}; 
+                    
+                    .balance-box .status {
+                        font-size: 12px;
+                        font-weight: 700;
+                        text-transform: uppercase;
+                        letter-spacing: 2px;
+                        color: ${balance > 0 ? '#dc2626' : '#16a34a'};
+                        margin-bottom: 8px;
+                    }
+                    
+                    .balance-box .amount {
+                        font-size: 42px;
+                        font-weight: 800;
+                        color: ${balance > 0 ? '#dc2626' : '#16a34a'};
+                        letter-spacing: -1px;
+                    }
+                    
+                    /* Footer */
+                    .footer {
+                        background: #1a1a1a;
+                        color: white;
+                        padding: 30px 40px;
+                        text-align: center;
+                    }
+                    
+                    .footer p {
+                        font-size: 14px;
                         margin-bottom: 5px;
                     }
-                    .balance-amount { 
-                        font-size: 28px; 
-                        font-weight: bold; 
-                        color: ${balance > 0 ? '#dc2626' : '#16a34a'};
+                    
+                    .footer .tagline {
+                        color: #dc2626;
+                        font-weight: 600;
+                        font-size: 16px;
+                        margin-bottom: 10px;
                     }
-                    .footer {
-                        text-align: center;
-                        margin-top: 40px;
-                        padding-top: 20px;
-                        border-top: 1px solid #eee;
-                        color: #666;
+                    
+                    .footer .contact {
+                        color: #888;
                         font-size: 12px;
                     }
-                    .locked-badge {
-                        display: inline-block;
-                        background: #fef3c7;
-                        color: #92400e;
-                        padding: 4px 10px;
-                        border-radius: 4px;
-                        font-size: 11px;
-                        margin-left: 10px;
+                    
+                    /* Print buttons */
+                    .no-print {
+                        text-align: center;
+                        padding: 30px;
+                        background: #f5f5f5;
                     }
+                    
+                    .btn {
+                        display: inline-block;
+                        padding: 14px 32px;
+                        font-size: 14px;
+                        font-weight: 600;
+                        border: none;
+                        border-radius: 8px;
+                        cursor: pointer;
+                        transition: all 0.2s;
+                        margin: 0 8px;
+                    }
+                    
+                    .btn-primary {
+                        background: #dc2626;
+                        color: white;
+                    }
+                    
+                    .btn-primary:hover {
+                        background: #b91c1c;
+                        transform: translateY(-2px);
+                        box-shadow: 0 4px 12px rgba(220,38,38,0.3);
+                    }
+                    
+                    .btn-secondary {
+                        background: #e5e5e5;
+                        color: #333;
+                    }
+                    
+                    .btn-secondary:hover {
+                        background: #d4d4d4;
+                    }
+                    
                     @media print {
-                        body { padding: 20px; }
-                        .no-print { display: none; }
+                        body { 
+                            background: white;
+                            padding: 0;
+                        }
+                        .receipt-container {
+                            box-shadow: none;
+                            margin: 0;
+                        }
+                        .no-print { display: none !important; }
+                        .header { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+                        .footer { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+                        th { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+                        .balance-box { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+                        .cost-row.highlight { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
                     }
                 </style>
             </head>
             <body>
-                <div class="header">
-                    <div class="logo">🦷 Aquadent Dental Clinic</div>
-                    <div class="subtitle">Patient Receipt / Invoice</div>
-                </div>
-
-                <div class="invoice-info">
-                    <div>
-                        <div class="label">Invoice Number</div>
-                        <div class="value">${invoiceNumber}</div>
-                        <div class="label" style="margin-top: 15px;">Date</div>
-                        <div class="value">${receiptDate}</div>
-                    </div>
-                    <div style="text-align: right;">
-                        <div class="label">Patient</div>
-                        <div class="value">${p.name}</div>
-                        <div class="value" style="font-weight: normal; color: #666;">${p.contacts}</div>
-                        <div class="label" style="margin-top: 15px;">Patient No</div>
-                        <div class="value">#${p.no}</div>
-                    </div>
-                </div>
-
-                ${p.procedure && p.procedure.length > 0 ? `
-                    <div class="section-title">Procedures</div>
-                    <div class="procedures">${p.procedure.join(', ')}</div>
-                ` : ""}
-
-                ${p.lab_procedures ? `
-                    <div class="section-title">Lab Procedures</div>
-                    <div class="procedures">${p.lab_procedures}</div>
-                ` : ""}
-
-                <div class="section-title">Cost Breakdown</div>
-                <div class="cost-breakdown">
-                    <div class="cost-row">
-                        <span>Lab Cost</span>
-                        <span>Ksh ${(p.lab_cost || 0).toLocaleString()}</span>
-                    </div>
-                    <div class="cost-row">
-                        <span>Clinic Cost</span>
-                        <span>Ksh ${(p.clinic_cost || 0).toLocaleString()}</span>
-                    </div>
-                    <div class="cost-row subtotal">
-                        <span>Total Cost</span>
-                        <span>Ksh ${totalCost.toLocaleString()}</span>
-                    </div>
-                </div>
-
-                <div class="section-title">Payments Received</div>
-                <div class="cost-breakdown">
-                    <div class="cost-row">
-                        <span>Insurance</span>
-                        <span>Ksh ${(p.insurance_amount || 0).toLocaleString()}</span>
-                    </div>
-                    <div class="cost-row">
-                        <span>Cash Payment</span>
-                        <span>Ksh ${(p.cash_amount || 0).toLocaleString()}</span>
-                    </div>
-                    ${installmentsTotal > 0 ? `
-                        <div class="cost-row">
-                            <span>Installments (${(p.installments || []).length} payments)</span>
-                            <span>Ksh ${installmentsTotal.toLocaleString()}</span>
+                <div class="receipt-container">
+                    <div class="header">
+                        <div class="header-content">
+                            <div class="brand">
+                                <div class="brand-icon">🦷</div>
+                                <div class="brand-text">
+                                    <h1>Aquadent Dental Clinic</h1>
+                                    <p>Excellence in Dental Care • Eldoret, Kenya</p>
+                                </div>
+                            </div>
+                            <div class="receipt-badge">
+                                <div class="label">Official Receipt</div>
+                                <div class="number">${invoiceNumber}</div>
+                            </div>
                         </div>
-                    ` : ""}
-                    <div class="cost-row subtotal">
-                        <span>Total Paid</span>
-                        <span>Ksh ${((p.insurance_amount || 0) + (p.cash_amount || 0) + installmentsTotal).toLocaleString()}</span>
+                    </div>
+                    
+                    <div class="content">
+                        <div class="info-grid">
+                            <div class="info-card">
+                                <h3>Patient Information</h3>
+                                <div class="name">${p.name}</div>
+                                <div class="detail">${p.contacts}</div>
+                                <div class="patient-no">ID: #${p.no}</div>
+                            </div>
+                            <div class="info-card">
+                                <h3>Receipt Details</h3>
+                                <div class="name">${receiptDate}</div>
+                                <div class="detail">Payment Receipt</div>
+                            </div>
+                        </div>
+                        
+                        ${p.procedure && p.procedure.length > 0 ? `
+                            <div class="section">
+                                <div class="section-title">Clinical Procedures</div>
+                                <div class="procedures-box">${p.procedure.join(' • ')}</div>
+                            </div>
+                        ` : ""}
+                        
+                        ${p.lab_procedures ? `
+                            <div class="section">
+                                <div class="section-title">Laboratory Procedures</div>
+                                <div class="procedures-box">${p.lab_procedures}</div>
+                            </div>
+                        ` : ""}
+                        
+                        <div class="section">
+                            <div class="section-title">Cost Summary</div>
+                            <div class="cost-card">
+                                <div class="cost-row">
+                                    <span class="label">Laboratory Services</span>
+                                    <span class="amount">Ksh ${(p.lab_cost || 0).toLocaleString()}</span>
+                                </div>
+                                <div class="cost-row">
+                                    <span class="label">Clinical Services</span>
+                                    <span class="amount">Ksh ${(p.clinic_cost || 0).toLocaleString()}</span>
+                                </div>
+                                <div class="cost-row highlight">
+                                    <span class="label">TOTAL COST</span>
+                                    <span class="amount">Ksh ${totalCost.toLocaleString()}</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="section">
+                            <div class="section-title">Payments Received</div>
+                            <div class="cost-card">
+                                <div class="cost-row">
+                                    <span class="label">Insurance Coverage</span>
+                                    <span class="amount">Ksh ${(p.insurance_amount || 0).toLocaleString()}</span>
+                                </div>
+                                <div class="cost-row">
+                                    <span class="label">Cash Payment</span>
+                                    <span class="amount">Ksh ${(p.cash_amount || 0).toLocaleString()}</span>
+                                </div>
+                                ${installmentsTotal > 0 ? `
+                                    <div class="cost-row">
+                                        <span class="label">Installments (${(p.installments || []).length} payments)</span>
+                                        <span class="amount">Ksh ${installmentsTotal.toLocaleString()}</span>
+                                    </div>
+                                ` : ""}
+                                <div class="cost-row highlight">
+                                    <span class="label">TOTAL PAID</span>
+                                    <span class="amount">Ksh ${((p.insurance_amount || 0) + (p.cash_amount || 0) + installmentsTotal).toLocaleString()}</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        ${installmentsHtml}
+                        
+                        <div class="balance-box">
+                            <div class="status">${balance > 0 ? 'Balance Due' : balance < 0 ? 'Overpayment' : '✓ Paid in Full'}</div>
+                            <div class="amount">Ksh ${Math.abs(balance).toLocaleString()}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="footer">
+                        <p class="tagline">Thank you for choosing Aquadent Dental Clinic!</p>
+                        <p>Your smile is our priority</p>
+                        <p class="contact">📧 info@aquadent.co.ke • 📞 +254 700 000 000 • 📍 Eldoret, Kenya</p>
                     </div>
                 </div>
-
-                ${installmentsHtml}
-
-                <div class="balance-due">
-                    <div class="balance-label">${balance > 0 ? 'BALANCE DUE' : balance < 0 ? 'OVERPAYMENT' : 'PAID IN FULL'}</div>
-                    <div class="balance-amount">Ksh ${Math.abs(balance).toLocaleString()}</div>
-                </div>
-
-                <div class="footer">
-                    <p>Thank you for choosing Aquadent Dental Clinic!</p>
-                    <p style="margin-top: 5px;">For inquiries, contact us at info@aquadent.com</p>
-                    ${p.price_locked ? `<p style="margin-top: 10px;"><span class="locked-badge">🔒 Prices Locked on ${p.price_locked_at ? new Date(p.price_locked_at).toLocaleDateString() : 'N/A'}</span></p>` : ""}
-                </div>
-
-                <div class="no-print" style="text-align: center; margin-top: 30px;">
-                    <button onclick="window.print()" style="
-                        background: #2563eb;
-                        color: white;
-                        border: none;
-                        padding: 12px 30px;
-                        font-size: 16px;
-                        border-radius: 8px;
-                        cursor: pointer;
-                        margin-right: 10px;
-                    ">🖨️ Print Receipt</button>
-                    <button onclick="window.close()" style="
-                        background: #6b7280;
-                        color: white;
-                        border: none;
-                        padding: 12px 30px;
-                        font-size: 16px;
-                        border-radius: 8px;
-                        cursor: pointer;
-                    ">Close</button>
+                
+                <div class="no-print">
+                    <button class="btn btn-primary" onclick="window.print()">🖨️ Print Receipt</button>
+                    <button class="btn btn-secondary" onclick="window.close()">Close</button>
                 </div>
             </body>
             </html>
@@ -486,7 +978,6 @@ const CompletedLabWorksTable: React.FC<CompletedLabWorksTableProps> = ({ patient
                             <th className="p-3 font-medium text-gray-600 sticky left-[60px] z-20 bg-gray-50 border-r border-gray-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] min-w-[150px]">PATIENT</th>
                             <th className="p-3 font-medium text-gray-600">G</th>
                             <th className="p-3 font-medium text-gray-600">AGE</th>
-                            <th className="p-3 font-medium text-gray-600">DOB</th>
                             <th className="p-3 font-medium text-gray-600">CONTACTS</th>
                             <th className="p-3 font-medium text-gray-600">RES</th>
                             <th className="p-3 font-medium text-gray-600">INSURANCE</th>
@@ -508,7 +999,7 @@ const CompletedLabWorksTable: React.FC<CompletedLabWorksTableProps> = ({ patient
                     <tbody className="divide-y divide-gray-100">
                         {filteredPatients.length === 0 ? (
                             <tr>
-                                <td colSpan={22} className="p-4 text-center text-slate-500">
+                                <td colSpan={19} className="p-4 text-center text-slate-500">
                                     No records found for the selected criteria.
                                 </td>
                             </tr>
@@ -519,7 +1010,6 @@ const CompletedLabWorksTable: React.FC<CompletedLabWorksTableProps> = ({ patient
                                     <td className="p-3 font-medium sticky left-[60px] z-10 bg-white border-r border-gray-100 min-w-[150px]">{p.name}</td>
                                     <td className="p-3">{p.g}</td>
                                     <td className="p-3">{getAge(p)}</td>
-                                    <td className="p-3 text-gray-500">{formatDOB(p.dob)}</td>
                                     <td className="p-3">{p.contacts}</td>
                                     <td className="p-3">{p.res}</td>
                                     <td className="p-3">{p.op}</td>
@@ -588,8 +1078,17 @@ const CompletedLabWorksTable: React.FC<CompletedLabWorksTableProps> = ({ patient
                                                 className="px-3 py-1.5 bg-gray-600 text-white text-xs font-medium rounded hover:bg-gray-700 transition-colors"
                                                 title="Print Receipt"
                                             >
-                                                🖨️
+                                                🧾
                                             </button>
+                                            {(p.insurance_amount || 0) > 0 && (
+                                                <button
+                                                    onClick={() => printInvoice(p)}
+                                                    className="px-3 py-1.5 bg-amber-600 text-white text-xs font-medium rounded hover:bg-amber-700 transition-colors"
+                                                    title="Print Invoice (Insurance)"
+                                                >
+                                                    �
+                                                </button>
+                                            )}
                                         </div>
                                     </td>
                                 </tr>
@@ -774,7 +1273,7 @@ const CompletedLabWorksTable: React.FC<CompletedLabWorksTableProps> = ({ patient
                             </div>
 
                             {/* Come Again */}
-                            <div className="flex items-center gap-3 py-2">
+                            <div className="flex items-center gap-3 py-2 border-t pt-4">
                                 <input
                                     type="checkbox"
                                     id="to_come_again"
@@ -785,6 +1284,53 @@ const CompletedLabWorksTable: React.FC<CompletedLabWorksTableProps> = ({ patient
                                 <label htmlFor="to_come_again" className="text-sm font-medium text-gray-700">
                                     Patient needs to come again
                                 </label>
+                            </div>
+
+                            {/* DOCUMENT UPLOADS */}
+                            <div className="border-t pt-4 space-y-4">
+                                <h4 className="font-medium text-gray-800">Documents</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-500 mb-1">Patient Card</label>
+                                        <div className="flex flex-col gap-2">
+                                            {formData.card_image_url && (
+                                                <div className="relative w-full h-32 border rounded overflow-hidden bg-gray-50">
+                                                    <img src={formData.card_image_url} className="w-full h-full object-contain" alt="Card preview" />
+                                                    <button
+                                                        onClick={() => setFormData(prev => ({ ...prev, card_image_url: '' }))}
+                                                        className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full text-xs shadow-md"
+                                                    >✕</button>
+                                                </div>
+                                            )}
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                onChange={(e) => handleFileChange(e, 'card_image_url')}
+                                                className="text-xs w-full file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-500 mb-1">Consent Form</label>
+                                        <div className="flex flex-col gap-2">
+                                            {formData.consent_form_url && (
+                                                <div className="relative w-full h-32 border rounded overflow-hidden bg-gray-50">
+                                                    <img src={formData.consent_form_url} className="w-full h-full object-contain" alt="Consent preview" />
+                                                    <button
+                                                        onClick={() => setFormData(prev => ({ ...prev, consent_form_url: '' }))}
+                                                        className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full text-xs shadow-md"
+                                                    >✕</button>
+                                                </div>
+                                            )}
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                onChange={(e) => handleFileChange(e, 'consent_form_url')}
+                                                className="text-xs w-full file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 

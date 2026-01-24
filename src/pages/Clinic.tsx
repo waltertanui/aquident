@@ -178,6 +178,17 @@ export default function Clinic() {
   // Derived state
   const activePatients = useMemo(() => filteredByTime.filter(p => p.status === 'active'), [filteredByTime]);
   // CHANGED: Include 'lab' status in this table so doctors can see them
+
+  // Document upload handler
+  const handleDocUpload = async (patientNo: number, file: File, field: 'card_image_url' | 'consent_form_url' | 'opg_document_url') => {
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const base64 = reader.result as string;
+      await updateWalkin(patientNo, { [field]: base64 });
+      setPatients(prev => prev.map(p => p.no === patientNo ? { ...p, [field]: base64 } : p));
+    };
+    reader.readAsDataURL(file);
+  };
   const completedPatients = useMemo(() => filteredByTime.filter(p => p.status === 'completed' || p.status === 'lab'), [filteredByTime]);
 
   const calculatedTotal = useMemo(() => {
@@ -345,12 +356,13 @@ export default function Clinic() {
                   <th className="p-2">CONTACTS</th>
                   <th className="p-2">RES</th>
                   <th className="p-2">Insurance</th>
+                  <th className="p-2">NOTES</th>
                 </tr>
               </thead>
               <tbody>
                 {patients.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="p-4 text-center text-slate-500">
+                    <td colSpan={9} className="p-4 text-center text-slate-500">
                       No walk-ins found.
                     </td>
                   </tr>
@@ -369,6 +381,7 @@ export default function Clinic() {
                       <td className="p-2">{p.contacts}</td>
                       <td className="p-2">{p.res}</td>
                       <td className="p-2">{p.op}</td>
+                      <td className="p-2 max-w-xs truncate" title={p.clinic_notes || ''}>{p.clinic_notes || '—'}</td>
                     </tr>
                   ))
                 )}
@@ -626,29 +639,62 @@ export default function Clinic() {
 
       <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
         <h2 className="text-sm font-medium text-slate-700">Completed Treatments</h2>
-        <table className="mt-3 w-full text-left">
+        <table className="mt-3 w-full text-left border-collapse">
           <thead>
             <tr className="text-xs text-slate-500 border-b">
-              <th className="py-2 pl-2">NO</th>
-              <th className="py-2">PATIENT</th>
-              <th className="py-2">PROCEDURE</th>
-              <th className="py-2">DOCTOR</th>
-              <th className="py-2">COST</th>
-              <th className="py-2">STATUS</th>
+              <th className="py-2 px-2 border-r">NO</th>
+              <th className="py-2 px-2 border-r">PATIENT</th>
+              <th className="py-2 px-2 border-r">PROCEDURE</th>
+              <th className="py-2 px-2 border-r">DOCTOR</th>
+              <th className="py-2 px-2 border-r">COST</th>
+              <th className="py-2 px-2 border-r">CARD</th>
+              <th className="py-2 px-2 border-r">CONSENT</th>
+              <th className="py-2 px-2 border-r">OPG</th>
+              <th className="py-2 px-2">STATUS</th>
             </tr>
           </thead>
-          <tbody className="text-sm text-slate-700">
+          <tbody className="text-xs text-slate-700">
             {completedPatients.length === 0 ? (
-              <tr><td colSpan={6} className="py-4 text-center text-gray-500">No completed treatments yet.</td></tr>
+              <tr><td colSpan={8} className="py-4 text-center text-gray-500">No completed treatments yet.</td></tr>
             ) : (
               completedPatients.map(p => (
                 <tr key={p.no} className="border-b last:border-0 hover:bg-slate-50">
-                  <td className="py-2 pl-2 ">{p.no}</td>
-                  <td className="py-2 font-medium">{p.name}</td>
-                  <td className="py-2">{p.procedure?.join(", ") || "-"}</td>
-                  <td className="py-2">{p.doc_name || "-"}</td>
-                  <td className="py-2">Ksh {p.clinic_cost?.toLocaleString() || '0'}</td>
-                  <td className="py-2">
+                  <td className="py-2 px-2 border-r">{p.no}</td>
+                  <td className="py-2 px-2 border-r font-medium">{p.name}</td>
+                  <td className="py-2 px-2 border-r">{p.procedure?.join(", ") || "-"}</td>
+                  <td className="py-2 px-2 border-r">{p.doc_name || "-"}</td>
+                  <td className="py-2 px-2 border-r">Ksh {p.clinic_cost?.toLocaleString() || '0'}</td>
+                  <td className="py-2 px-2 border-r">
+                    {p.card_image_url ? (
+                      <a href={p.card_image_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800" title="View Card">🖼️</a>
+                    ) : (
+                      <label className="cursor-pointer text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200">
+                        ➕
+                        <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && handleDocUpload(p.no, e.target.files[0], 'card_image_url')} />
+                      </label>
+                    )}
+                  </td>
+                  <td className="py-2 px-2 border-r">
+                    {p.consent_form_url ? (
+                      <a href={p.consent_form_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800" title="View Consent">🖼️</a>
+                    ) : (
+                      <label className="cursor-pointer text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200">
+                        ➕
+                        <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && handleDocUpload(p.no, e.target.files[0], 'consent_form_url')} />
+                      </label>
+                    )}
+                  </td>
+                  <td className="py-2 px-2 border-r">
+                    {p.opg_document_url ? (
+                      <a href={p.opg_document_url} target="_blank" rel="noopener noreferrer" className="text-red-600 hover:text-red-800 text-lg" title="View OPG (PDF)">📄</a>
+                    ) : (
+                      <label className="cursor-pointer text-xs bg-red-100 text-red-700 px-2 py-1 rounded hover:bg-red-200">
+                        ➕
+                        <input type="file" accept="application/pdf" className="hidden" onChange={(e) => e.target.files?.[0] && handleDocUpload(p.no, e.target.files[0], 'opg_document_url')} />
+                      </label>
+                    )}
+                  </td>
+                  <td className="py-2 px-2">
                     <span className={`rounded-full px-2 py-1 text-xs capitalize ${p.status === 'lab'
                       ? 'bg-yellow-100 text-yellow-800'
                       : 'bg-green-100 text-green-700'

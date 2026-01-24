@@ -126,6 +126,7 @@ function FrontOffice() {
         op: String(fd.get("op") || ""),
         dr: String(fd.get("dr") || ""),
         ins: fd.get("ins") ? String(fd.get("ins")) : undefined,
+        clinic_notes: String(fd.get("clinic_notes") || ""), // Capture notes
       };
       // ADD: read DOB from form (keep out of saveWalkin to avoid extra property checks)
       const dob = String(fd.get("dob") || "");
@@ -254,6 +255,7 @@ function FrontOffice() {
       {/* Replaced manual tables with AllRecords component */}
       <AllRecords
         patients={filtered}
+        allPatients={patients}
         query={query}
         onShowForm={() => setShowForm(true)}
         onSetTempName={(name) => setTempName(name)} // To capture search text when clicking "Create new"
@@ -307,11 +309,7 @@ function FrontOffice() {
                       <span className="text-xs text-gray-500">{p.contacts}</span>
                     </button>
                   ))}
-                  {existingMatches.length === 0 && (tempName || tempContacts) && (
-                    <div className="px-3 py-2 text-sm text-gray-600">
-                      No existing client found. Continue with entered details.
-                    </div>
-                  )}
+
                 </div>
               )}
             </div>
@@ -356,6 +354,12 @@ function FrontOffice() {
               placeholder="Residence"
               className="border rounded-md px-3 py-2 w-full"
               required
+            />
+            {/* ADD: Clinic Notes field */}
+            <textarea
+              name="clinic_notes"
+              placeholder="Clinic Notes (Optional)"
+              className="border rounded-md px-3 py-2 w-full min-h-[80px]"
             />
             <input
               ref={opRef}
