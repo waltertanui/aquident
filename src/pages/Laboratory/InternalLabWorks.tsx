@@ -1,7 +1,8 @@
 import PageHeader from "../../components/PageHeader";
 import Card from "../../ui/Card";
 // Add React state for the form
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import LabProcedures from "./LabProcedures";
 import InventoryRequestModal from "../../components/InventoryRequestModal";
 
@@ -30,35 +31,26 @@ function InternalLabWorks() {
   });
 
   // Lab Queue state
-  const [labPatients, setLabPatients] = useState<PatientRecord[]>([]);
-  const [completedLabPatients, setCompletedLabPatients] = useState<PatientRecord[]>([]);
+  const queryClient = useQueryClient();
+  const { data: allPatients = [] } = useQuery({
+    queryKey: ['walkins'],
+    queryFn: listWalkins,
+  });
+
+  // Filter for patients sent to lab
+  const labPatients = allPatients.filter(p => p.status === 'lab');
+
+  // Filter for completed lab works (status 'completed')
+  // Since we temporarily removed materials, we just show all completed for now.
+  const completedLabPatients = allPatients.filter(p =>
+    p.status === 'completed' && p.lab_procedures && p.lab_procedures.trim().length > 0
+  );
+
   const [selectedPatient, setSelectedPatient] = useState<PatientRecord | null>(null);
 
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [showInventoryModal, setShowInventoryModal] = useState(false);
-
-  async function fetchLabQueue() {
-    try {
-      const allPatients = await listWalkins();
-      // Filter for patients sent to lab
-      const inLab = allPatients.filter(p => p.status === 'lab');
-      setLabPatients(inLab);
-
-      // Filter for completed lab works (status 'completed')
-      // Since we temporarily removed materials, we just show all completed for now.
-      const completedLab = allPatients.filter(p =>
-        p.status === 'completed' && p.lab_procedures && p.lab_procedures.trim().length > 0
-      );
-      setCompletedLabPatients(completedLab);
-    } catch (err) {
-      console.error("Failed to fetch lab queue", err);
-    }
-  }
-
-  useEffect(() => {
-    fetchLabQueue();
-  }, []);
 
   const handlePatientSelect = (p: PatientRecord) => {
     setSelectedPatient(p);
@@ -121,7 +113,7 @@ function InternalLabWorks() {
       setSelectedPatient(null);
 
       // Refresh lists
-      await fetchLabQueue();
+      queryClient.invalidateQueries({ queryKey: ['walkins'] });
 
     } catch (err) {
       console.error(err);

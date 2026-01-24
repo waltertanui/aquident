@@ -1,10 +1,9 @@
 import PageHeader from "../components/PageHeader";
 import Card from "../ui/Card";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
-  InternalInventoryItem,
   InternalInventoryStatus,
-  InventoryRequest,
 } from "../middleware/data";
 import {
   listInternalInventory,
@@ -16,10 +15,21 @@ import {
 } from "../middleware/data";
 
 function Inventory() {
-  const [items, setItems] = useState<InternalInventoryItem[]>([]);
-  const [requests, setRequests] = useState<InventoryRequest[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+
+  const { data: items = [], isLoading: loadingItems, error: errorItems } = useQuery({
+    queryKey: ['internalInventory'],
+    queryFn: listInternalInventory,
+  });
+
+  const { data: requests = [], isLoading: loadingRequests } = useQuery({
+    queryKey: ['inventoryRequests'],
+    queryFn: () => listInventoryRequests(),
+  });
+
+  const loading = loadingItems || loadingRequests;
+  const error = errorItems ? "Failed to load inventory. Please ensure the database tables exist." : null;
+
   const [query, setQuery] = useState("");
   const [showAdd, setShowAdd] = useState(false);
   const [activeTab, setActiveTab] = useState<"inventory" | "requests" | "history">("inventory");
@@ -29,27 +39,6 @@ function Inventory() {
     initial_qty: 0,
     qty: 0,
   });
-
-  // Load items and requests from Supabase
-  useEffect(() => {
-    async function fetchData() {
-      setLoading(true);
-      setError(null);
-      try {
-        const [inventoryData, requestsData] = await Promise.all([
-          listInternalInventory(),
-          listInventoryRequests(),
-        ]);
-        setItems(inventoryData);
-        setRequests(requestsData);
-      } catch (err) {
-        console.error("Error loading inventory:", err);
-        setError("Failed to load inventory. Please ensure the database tables exist.");
-      }
-      setLoading(false);
-    }
-    fetchData();
-  }, []);
 
   const filteredItems = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -76,7 +65,7 @@ function Inventory() {
       qty: newItem.qty,
     });
     if (created) {
-      setItems((prev) => [...prev, created]);
+      queryClient.invalidateQueries({ queryKey: ['internalInventory'] });
     }
     setShowAdd(false);
     setNewItem({ name: "", sku: "", initial_qty: 0, qty: 0 });
@@ -85,7 +74,7 @@ function Inventory() {
   const deleteItem = async (id: number) => {
     const success = await deleteInternalInventoryItem(id);
     if (success) {
-      setItems((prev) => prev.filter((i) => i.id !== id));
+      queryClient.invalidateQueries({ queryKey: ['internalInventory'] });
     }
   };
 
@@ -93,12 +82,8 @@ function Inventory() {
     const success = await approveInventoryRequest(requestId, "Inventory Keeper");
     if (success) {
       // Refresh both lists
-      const [inventoryData, requestsData] = await Promise.all([
-        listInternalInventory(),
-        listInventoryRequests(),
-      ]);
-      setItems(inventoryData);
-      setRequests(requestsData);
+      queryClient.invalidateQueries({ queryKey: ['internalInventory'] });
+      queryClient.invalidateQueries({ queryKey: ['inventoryRequests'] });
     }
   };
 
@@ -106,9 +91,7 @@ function Inventory() {
     const reason = prompt("Reason for rejection (optional):");
     const success = await rejectInventoryRequest(requestId, "Inventory Keeper", reason || undefined);
     if (success) {
-      // Refresh requests list to move item to history
-      const requestsData = await listInventoryRequests();
-      setRequests(requestsData);
+      queryClient.invalidateQueries({ queryKey: ['inventoryRequests'] });
     }
   };
 

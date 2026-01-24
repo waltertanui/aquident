@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import PageHeader from "../../components/PageHeader";
 import Card from "../../ui/Card";
 import LabProcedures from "./LabProcedures";
@@ -68,28 +69,16 @@ const DEFAULT_FORM_VALUES: FormData = {
 // ────────────────────────────────────────────────
 
 export default function ExternalLabWorks() {
+  const queryClient = useQueryClient();
   const [form, setForm] = useState<FormData>(DEFAULT_FORM_VALUES);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [orders, setOrders] = useState<ExternalLabOrder[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [showInventoryModal, setShowInventoryModal] = useState(false);
 
-  // Fetch orders on mount
-  useEffect(() => {
-    fetchOrders();
-  }, []);
-
-  const fetchOrders = async () => {
-    setIsLoading(true);
-    try {
-      const data = await listExternalLabOrders();
-      setOrders(data);
-    } catch (error) {
-      console.error("Error fetching orders:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // Fetch orders using useQuery
+  const { data: orders = [], isLoading, refetch } = useQuery({
+    queryKey: ['externalLabOrders'],
+    queryFn: listExternalLabOrders,
+  });
 
   const totalUnits = useMemo(
     () => form.items.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0),
@@ -190,7 +179,7 @@ export default function ExternalLabWorks() {
       if (result) {
         alert("Order submitted successfully!");
         setForm(DEFAULT_FORM_VALUES);
-        fetchOrders(); // Refresh the orders table
+        queryClient.invalidateQueries({ queryKey: ['externalLabOrders'] });
       } else {
         alert("Failed to submit order. Please try again.");
       }
@@ -649,7 +638,7 @@ export default function ExternalLabWorks() {
             <h2 className="text-lg font-semibold text-gray-800">External Lab Orders</h2>
             <button
               type="button"
-              onClick={fetchOrders}
+              onClick={() => refetch()}
               className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded"
             >
               Refresh

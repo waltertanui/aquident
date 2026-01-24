@@ -1,14 +1,29 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import PageHeader from "../../components/PageHeader";
 import Card from "../../ui/Card";
 import { listSales, createSale, listSalesInventory } from "../../middleware/data";
-import type { SalesInventoryItem, Sale } from "../../middleware/data";
+// blank line or simply remove the line
+
 
 function Sales() {
-    const [sales, setSales] = useState<Sale[]>([]);
-    const [inventory, setInventory] = useState<SalesInventoryItem[]>([]);
+    const queryClient = useQueryClient();
+
+    // Fetch sales and inventory
+    const { data: sales = [], isLoading: loadingSales } = useQuery({
+        queryKey: ['sales'],
+        queryFn: listSales,
+    });
+
+    const { data: inventory = [], isLoading: loadingInventory } = useQuery({
+        queryKey: ['salesInventory'],
+        queryFn: listSalesInventory,
+    });
+
+    const activeInventory = inventory.filter(i => i.qty > 0);
+    const loading = loadingSales || loadingInventory;
+
     const [showAddSale, setShowAddSale] = useState(false);
-    const [loading, setLoading] = useState(true);
 
     const [newSale, setNewSale] = useState({
         customer_name: "",
@@ -16,25 +31,10 @@ function Sales() {
         quantity: 1,
     });
 
-    useEffect(() => {
-        loadData();
-    }, []);
-
-    async function loadData() {
-        setLoading(true);
-        const [salesData, inventoryData] = await Promise.all([
-            listSales(),
-            listSalesInventory(),
-        ]);
-        setSales(salesData);
-        setInventory(inventoryData.filter(i => i.qty > 0));
-        setLoading(false);
-    }
-
     const handleSaveSale = async () => {
         if (!newSale.customer_name || !newSale.item_id || newSale.quantity <= 0) return;
 
-        const item = inventory.find(i => i.id === newSale.item_id);
+        const item = activeInventory.find(i => i.id === newSale.item_id);
         if (!item) return;
 
         if (newSale.quantity > item.qty) {
@@ -53,9 +53,10 @@ function Sales() {
 
         const result = await createSale(saleData);
         if (result) {
+            queryClient.invalidateQueries({ queryKey: ['sales'] });
+            queryClient.invalidateQueries({ queryKey: ['salesInventory'] });
             setShowAddSale(false);
             setNewSale({ customer_name: "", item_id: "", quantity: 1 });
-            loadData();
         }
     };
 
@@ -146,7 +147,7 @@ function Sales() {
                                     onChange={e => setNewSale(v => ({ ...v, item_id: e.target.value }))}
                                 >
                                     <option value="">Select an item</option>
-                                    {inventory.map(item => (
+                                    {activeInventory.map(item => (
                                         <option key={item.id} value={item.id}>
                                             {item.name} ({formatCurrency(item.price)}) - {item.qty} in stock
                                         </option>

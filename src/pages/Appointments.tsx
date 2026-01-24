@@ -1,4 +1,5 @@
-import { useEffect, useState, useMemo } from "react";
+import { useState, useMemo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import PageHeader from "../components/PageHeader";
 import Card from "../ui/Card";
 import {
@@ -14,9 +15,18 @@ import {
 } from "../middleware/data";
 
 function Appointments() {
-  const [patients, setPatients] = useState<PatientRecord[]>([]);
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+
+  const { data: patients = [] } = useQuery({
+    queryKey: ['walkins'],
+    queryFn: listWalkins,
+  });
+
+  const { data: appointments = [], isLoading: loading } = useQuery({
+    queryKey: ['appointments'],
+    queryFn: listAppointments,
+  });
+
   const [query, setQuery] = useState("");
   const [activeTab, setActiveTab] = useState<"followup" | "appointments">("appointments");
 
@@ -34,20 +44,6 @@ function Appointments() {
     status: "scheduled",
   });
   const [isSaving, setIsSaving] = useState(false);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      const [allPatients, allAppointments] = await Promise.all([
-        listWalkins(),
-        listAppointments(),
-      ]);
-      setPatients(allPatients);
-      setAppointments(allAppointments);
-      setLoading(false);
-    };
-    fetchData();
-  }, []);
 
   // Filter patients who need to come again
   const toComeAgainPatients = useMemo(() => {
@@ -184,21 +180,12 @@ function Appointments() {
     try {
       if (editingAppointment) {
         // Update existing
-        const success = await updateAppointment(editingAppointment.id, formData);
-        if (success) {
-          setAppointments((prev) =>
-            prev.map((a) =>
-              a.id === editingAppointment.id ? { ...a, ...formData, updated_at: new Date().toISOString() } : a
-            )
-          );
-        }
+        await updateAppointment(editingAppointment.id, formData);
       } else {
         // Create new
-        const created = await createAppointment(formData);
-        if (created) {
-          setAppointments((prev) => [...prev, created]);
-        }
+        await createAppointment(formData);
       }
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
       setShowForm(false);
     } catch (error) {
       console.error("Failed to save appointment:", error);
@@ -212,16 +199,14 @@ function Appointments() {
     if (!confirm("Are you sure you want to delete this appointment?")) return;
     const success = await deleteAppointment(id);
     if (success) {
-      setAppointments((prev) => prev.filter((a) => a.id !== id));
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
     }
   };
 
   const handleStatusChange = async (id: number, newStatus: AppointmentStatus) => {
     const success = await updateAppointment(id, { status: newStatus });
     if (success) {
-      setAppointments((prev) =>
-        prev.map((a) => (a.id === id ? { ...a, status: newStatus } : a))
-      );
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
     }
   };
 
@@ -237,8 +222,8 @@ function Appointments() {
         <button
           onClick={() => setActiveTab("appointments")}
           className={`pb-2 text-sm font-medium transition-colors ${activeTab === "appointments"
-              ? "border-b-2 border-blue-600 text-blue-600"
-              : "text-gray-500 hover:text-gray-700"
+            ? "border-b-2 border-blue-600 text-blue-600"
+            : "text-gray-500 hover:text-gray-700"
             }`}
         >
           Scheduled Appointments
@@ -246,8 +231,8 @@ function Appointments() {
         <button
           onClick={() => setActiveTab("followup")}
           className={`pb-2 text-sm font-medium transition-colors ${activeTab === "followup"
-              ? "border-b-2 border-blue-600 text-blue-600"
-              : "text-gray-500 hover:text-gray-700"
+            ? "border-b-2 border-blue-600 text-blue-600"
+            : "text-gray-500 hover:text-gray-700"
             }`}
         >
           Patients to Come Again
@@ -404,10 +389,10 @@ function Appointments() {
                           <td className="p-3">
                             <span
                               className={`font-semibold ${(p.balance || 0) > 0
-                                  ? "text-red-600"
-                                  : (p.balance || 0) < 0
-                                    ? "text-green-600"
-                                    : "text-gray-600"
+                                ? "text-red-600"
+                                : (p.balance || 0) < 0
+                                  ? "text-green-600"
+                                  : "text-gray-600"
                                 }`}
                             >
                               {(p.balance || 0).toLocaleString()}

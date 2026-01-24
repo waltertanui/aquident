@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import PageHeader from "../../components/PageHeader";
 import Card from "../../ui/Card";
 import {
@@ -9,26 +10,20 @@ import {
 import type { SalesInventoryItem } from "../../middleware/data";
 
 function SalesInventory() {
-    const [items, setItems] = useState<SalesInventoryItem[]>([]);
+    const queryClient = useQueryClient();
+
+    const { data: items = [], isLoading: loading } = useQuery({
+        queryKey: ['salesInventory'],
+        queryFn: listSalesInventory,
+    });
+
     const [showAdd, setShowAdd] = useState(false);
-    const [loading, setLoading] = useState(true);
     const [newItem, setNewItem] = useState({
         name: "",
         sku: "",
         qty: 0,
         price: 0,
     });
-
-    useEffect(() => {
-        loadItems();
-    }, []);
-
-    async function loadItems() {
-        setLoading(true);
-        const data = await listSalesInventory();
-        setItems(data);
-        setLoading(false);
-    }
 
     const handleAddItem = async () => {
         if (!newItem.name || !newItem.sku) return;
@@ -44,16 +39,18 @@ function SalesInventory() {
         });
 
         if (result) {
+            queryClient.invalidateQueries({ queryKey: ['salesInventory'] });
             setShowAdd(false);
             setNewItem({ name: "", sku: "", qty: 0, price: 0 });
-            loadItems();
         }
     };
 
     const handleDelete = async (id: string) => {
         if (confirm("Are you sure you want to delete this item?")) {
             const success = await deleteSalesInventoryItem(id);
-            if (success) loadItems();
+            if (success) {
+                queryClient.invalidateQueries({ queryKey: ['salesInventory'] });
+            }
         }
     };
 

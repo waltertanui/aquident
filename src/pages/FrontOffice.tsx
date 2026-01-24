@@ -1,6 +1,6 @@
-// Top-level imports
 import PageHeader from "../components/PageHeader";
 import AllRecords from "../components/AllRecords";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 // ADD: hooks for table filter/search
 import { useMemo, useState, useEffect, useRef } from "react";
@@ -22,21 +22,17 @@ import { listWalkins, createWalkin, type PatientRecord, type Gender, type TimeRa
 const formatCurrency = (n: number) => n.toLocaleString();
 
 function FrontOffice() {
+  const queryClient = useQueryClient();
   // ADD: simple search across NO/NAME/RES
-  // CHANGE: initialize with empty list; we'll fetch only from Supabase
   const [query, setQuery] = useState("");
   const [showForm, setShowForm] = useState(false);
-  const [patients, setPatients] = useState<PatientRecord[]>([]);
   const [timeFilter, setTimeFilter] = useState<TimeRange>('Today');
 
-  useEffect(() => {
-    // CHANGE: fetch all from Supabase and replace local state
-    const run = async () => {
-      const stored = await listWalkins();
-      setPatients(stored);
-    };
-    run();
-  }, []);
+  // CHANGE: fetch from Supabase using useQuery
+  const { data: patients = [] } = useQuery({
+    queryKey: ['walkins'],
+    queryFn: listWalkins,
+  });
 
   const filteredByTime = useMemo(() => {
     const today = new Date();
@@ -131,15 +127,10 @@ function FrontOffice() {
       // ADD: read DOB from form (keep out of saveWalkin to avoid extra property checks)
       const dob = String(fd.get("dob") || "");
 
-      const created = await createWalkin(input, dob);
+      await createWalkin(input, dob);
 
-      const merged = selectedExisting
-        ? { ...created, old: selectedExisting.old ?? selectedExisting.no }
-        : { ...created, newId: (created as any).newId ?? (created as any).no };
-
-      const finalRecord = { ...merged, dob: dob || (selectedExisting?.dob || undefined) };
-
-      setPatients((prev) => [...prev, finalRecord]);
+      // Invalidate query to refetch latest data
+      queryClient.invalidateQueries({ queryKey: ['walkins'] });
 
       // FIX: reset the form before closing the modal (prevents null reference)
       form.reset();
@@ -154,10 +145,9 @@ function FrontOffice() {
   }
 
   // Handle patient update from CompletedLabWorksTable
-  function handleUpdatePatient(updatedPatient: PatientRecord) {
-    setPatients((prev) =>
-      prev.map((p) => (p.no === updatedPatient.no ? updatedPatient : p))
-    );
+  function handleUpdatePatient(_updatedPatient: PatientRecord) {
+    // Invalidate to refresh data across the board
+    queryClient.invalidateQueries({ queryKey: ['walkins'] });
   }
 
   // Prefill the form when opened from "Create from search"

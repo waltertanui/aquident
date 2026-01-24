@@ -1,4 +1,5 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { listWalkins, updateWalkin, type PatientRecord, type TimeRange } from "../middleware/data";
 import InventoryRequestModal from "../components/InventoryRequestModal";
 
@@ -145,8 +146,14 @@ const formatDOB = (dob?: string) => {
 const DOCTORS = ["Dr. Patel", "Dr. Lee", "Dr. Smith", "Dr. Jones"];
 
 export default function Clinic() {
+  const queryClient = useQueryClient();
   const [patientId, setPatientId] = useState("");
-  const [patients, setPatients] = useState<PatientRecord[]>([]);
+
+  const { data: patients = [] } = useQuery({
+    queryKey: ['walkins'],
+    queryFn: listWalkins,
+  });
+
   const [selectedPatient, setSelectedPatient] = useState<PatientRecord | null>(null);
   const [doctorName, setDoctorName] = useState("");
   const [notes, setNotes] = useState("");
@@ -185,7 +192,7 @@ export default function Clinic() {
     reader.onloadend = async () => {
       const base64 = reader.result as string;
       await updateWalkin(patientNo, { [field]: base64 });
-      setPatients(prev => prev.map(p => p.no === patientNo ? { ...p, [field]: base64 } : p));
+      queryClient.invalidateQueries({ queryKey: ['walkins'] });
     };
     reader.readAsDataURL(file);
   };
@@ -207,9 +214,7 @@ export default function Clinic() {
   }, [selected, quantities]);
 
   // Fetch walk-ins on mount
-  useEffect(() => {
-    listWalkins().then(setPatients);
-  }, []);
+  // Replaced by useQuery above
 
   const handlePatientSelect = (p: PatientRecord) => {
     setSelectedPatient(p);
@@ -293,12 +298,8 @@ export default function Clinic() {
     });
 
     if (success) {
-      // Refresh local state to move patient
-      setPatients(prev => prev.map(p =>
-        p.no === selectedPatient.no
-          ? { ...p, status: nextStatus, procedure: procedureNames, doc_name: doctorName, clinic_cost: calculatedCost }
-          : p
-      ));
+      // Refresh data
+      queryClient.invalidateQueries({ queryKey: ['walkins'] });
 
       // Reset form
       setSelectedPatient(null);

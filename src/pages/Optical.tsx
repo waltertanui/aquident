@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useMemo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import PageHeader from "../components/PageHeader";
 
 import {
@@ -46,8 +47,13 @@ const STATUS_COLORS: Record<OpticalStatus, string> = {
 // ────────────────────────────────────────────────
 
 export default function Optical() {
-  const [patients, setPatients] = useState<OpticalPatient[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
+
+  const { data: patients = [], isLoading } = useQuery({
+    queryKey: ['optical'],
+    queryFn: listOpticalPatients,
+  });
+
   const [showForm, setShowForm] = useState(false);
   const [editingPatient, setEditingPatient] = useState<OpticalPatient | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -91,21 +97,9 @@ export default function Optical() {
   // DATA FETCHING
   // ────────────────────────────────────────────────
 
-  useEffect(() => {
-    fetchPatients();
-  }, []);
-
-  const fetchPatients = async () => {
-    setIsLoading(true);
-    try {
-      const data = await listOpticalPatients();
-      setPatients(data);
-    } catch (error) {
-      console.error("Error fetching optical patients:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // ────────────────────────────────────────────────
+  // DATA FETCHING (Managed by useQuery above)
+  // ────────────────────────────────────────────────
 
   // ────────────────────────────────────────────────
   // COMPUTED VALUES
@@ -181,7 +175,7 @@ export default function Optical() {
     try {
       const result = await createOpticalPatient(formData);
       if (result) {
-        setPatients((prev) => [result, ...prev]);
+        queryClient.invalidateQueries({ queryKey: ['optical'] });
         setShowForm(false);
         resetForm();
       } else {
@@ -257,9 +251,7 @@ export default function Optical() {
 
       const success = await updateOpticalPatient(editingPatient.id, updates);
       if (success) {
-        setPatients((prev) =>
-          prev.map((p) => (p.id === editingPatient.id ? { ...p, ...updates } : p))
-        );
+        queryClient.invalidateQueries({ queryKey: ['optical'] });
         setEditingPatient(null);
       } else {
         alert("Failed to save");
@@ -275,9 +267,7 @@ export default function Optical() {
     try {
       const success = await updateOpticalPatient(patient.id, { status: newStatus });
       if (success) {
-        setPatients((prev) =>
-          prev.map((p) => (p.id === patient.id ? { ...p, status: newStatus } : p))
-        );
+        queryClient.invalidateQueries({ queryKey: ['optical'] });
       }
     } catch (error) {
       console.error("Error updating status:", error);
