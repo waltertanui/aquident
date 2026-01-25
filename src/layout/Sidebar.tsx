@@ -201,9 +201,6 @@ function Sidebar() {
           </button>
           {reportsOpen && (
             <div className="mt-1 space-y-1 pl-4">
-              <NavLink to="/reports" className={({ isActive }) => `${linkClass} py-1 text-xs ${isActive ? activeClass : ""}`}>
-                Reports Overview
-              </NavLink>
               <NavLink to="/reports/assistant" className={({ isActive }) => `${linkClass} py-1 text-xs ${isActive ? activeClass : ""}`}>
                 Assistant Report
               </NavLink>

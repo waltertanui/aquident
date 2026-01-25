@@ -24,7 +24,7 @@ const SalesInventory = lazy(() => import("./pages/SalesBilling/SalesInventory"))
 const Clinic = lazy(() => import("./pages/Clinic"));
 
 // Daily Reports
-const Reports = lazy(() => import("./pages/Reports/Reports"));
+
 const AssistantReport = lazy(() => import("./pages/Reports/AssistantReport"));
 const LabReport = lazy(() => import("./pages/Reports/LabReport"));
 const FinanceReport = lazy(() => import("./pages/Reports/FinanceReport"));
@@ -68,7 +68,7 @@ function App() {
           <Route path="/sales-billing/inventory" element={<SalesInventory />} />
 
           {/* Daily Reports */}
-          <Route path="/reports" element={<Reports />} />
+
           <Route path="/reports/assistant" element={<AssistantReport />} />
           <Route path="/reports/lab" element={<LabReport />} />
           <Route path="/reports/finance" element={<FinanceReport />} />

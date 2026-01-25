@@ -847,6 +847,7 @@ export interface DailyReport {
   submitted_by: string;
   content: AssistantReportContent | LabReportContent | FinanceReportContent;
   created_at?: string;
+  updated_at?: string;
 }
 
 const DAILY_REPORTS_TABLE = "daily_reports";
@@ -876,15 +877,15 @@ export async function listDailyReports(date?: string): Promise<DailyReport[]> {
   }));
 }
 
-export async function createDailyReport(report: Omit<DailyReport, "id" | "created_at">): Promise<boolean> {
+export async function createDailyReport(report: Omit<DailyReport, "id" | "created_at">): Promise<{ success: boolean; error?: any }> {
   const sb = getSupabaseClient();
   const { error } = await sb.from(DAILY_REPORTS_TABLE).insert(report);
 
   if (error) {
     console.error("createDailyReport error:", error);
-    return false;
+    return { success: false, error };
   }
-  return true;
+  return { success: true };
 }
 
 // ============================================
