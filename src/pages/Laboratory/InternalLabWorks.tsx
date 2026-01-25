@@ -1,7 +1,7 @@
 import PageHeader from "../../components/PageHeader";
 import Card from "../../ui/Card";
 // Add React state for the form
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import LabProcedures from "./LabProcedures";
 import InventoryRequestModal from "../../components/InventoryRequestModal";
@@ -16,11 +16,12 @@ type WorkOrderForm = {
   notes: string;
 };
 // Add middleware import
-import { listWalkins, updateWalkin, type PatientRecord } from "../../middleware/data";
+import { listWalkins, updateWalkin, type PatientRecord, type TimeRange } from "../../middleware/data";
 
 
 function InternalLabWorks() {
   // Initialize form state
+  const [timeFilter, setTimeFilter] = useState<TimeRange>('Today');
   const [form, setForm] = useState<WorkOrderForm>({
     patientId: "",
     clinician: "",
@@ -37,12 +38,29 @@ function InternalLabWorks() {
     queryFn: listWalkins,
   });
 
+  const filteredByTime = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    return allPatients.filter(p => {
+      if (timeFilter === 'All') return true;
+      if (!p.created_at) return false;
+      const d = new Date(p.created_at);
+      if (timeFilter === 'Today') return d >= today;
+      const diffDays = (today.getTime() - d.getTime()) / (1000 * 60 * 60 * 24);
+      if (timeFilter === 'Weekly') return diffDays <= 7;
+      if (timeFilter === 'Monthly') return diffDays <= 30;
+      if (timeFilter === 'Quarterly') return diffDays <= 90;
+      return true;
+    });
+  }, [allPatients, timeFilter]);
+
   // Filter for patients sent to lab
-  const labPatients = allPatients.filter(p => p.status === 'lab');
+  const labPatients = filteredByTime.filter(p => p.status === 'lab');
 
   // Filter for completed lab works (status 'completed')
   // Since we temporarily removed materials, we just show all completed for now.
-  const completedLabPatients = allPatients.filter(p =>
+  const completedLabPatients = filteredByTime.filter(p =>
     p.status === 'completed' && p.lab_procedures && p.lab_procedures.trim().length > 0
   );
 
@@ -125,7 +143,25 @@ function InternalLabWorks() {
 
   return (
     <div className="p-6 space-y-6">
-      <PageHeader title="Internal Lab Works" action={{ label: "Create Order" }} />
+      <PageHeader
+        title="Internal Lab Works"
+        action={{ label: "Create Order", onClick: () => { /* No-op, just visual mostly or scrolls */ } }}
+      >
+        <div className="flex bg-gray-100 p-1 rounded-lg">
+          {(['Today', 'Weekly', 'Monthly', 'Quarterly', 'All'] as TimeRange[]).map((range) => (
+            <button
+              key={range}
+              onClick={() => setTimeFilter(range)}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${timeFilter === range
+                ? 'bg-white text-blue-600 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+                }`}
+            >
+              {range}
+            </button>
+          ))}
+        </div>
+      </PageHeader>
 
       {/* 1. Horizontal Lab Queue Table */}
       <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">

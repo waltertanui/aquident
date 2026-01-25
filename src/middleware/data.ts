@@ -119,6 +119,7 @@ export async function listWalkins(): Promise<PatientRecord[]> {
     consent_form_url: row.consent_form_url ?? undefined,
     opg_document_url: row.opg_document_url ?? undefined,
     clinic_notes: row.clinic_notes ?? undefined,
+    created_at: row.created_at ?? undefined,
   }));
 }
 
@@ -180,6 +181,7 @@ export async function createWalkin(input: WalkinInput, dob?: string): Promise<Pa
     balance: 0,
     to_come_again: false,
     clinic_notes: row.clinic_notes ?? input.clinic_notes ?? undefined,
+    created_at: row.created_at ?? undefined,
   };
 }
 
@@ -909,6 +911,8 @@ export interface Sale {
   unit_price: number;
   total_price: number;
   sale_date: string;
+  payment_status: "paid" | "pending";
+  notes?: string;
   created_at?: string;
   // Join data
   item_name?: string;
@@ -1010,6 +1014,8 @@ export async function listSales(): Promise<Sale[]> {
     unit_price: row.unit_price,
     total_price: row.total_price,
     sale_date: row.sale_date,
+    payment_status: row.payment_status ?? "paid",
+    notes: row.notes ?? undefined,
     created_at: row.created_at,
     item_name: row.sales_inventory?.name,
   }));

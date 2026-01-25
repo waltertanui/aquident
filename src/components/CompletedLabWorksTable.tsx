@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import type { PatientRecord, InstallmentPayment } from '../middleware/data';
 import { updateWalkin } from '../middleware/data';
+import logo from '../assets/aquadent_logo.png';
 
 interface CompletedLabWorksTableProps {
     patients: PatientRecord[];
@@ -321,10 +322,10 @@ const CompletedLabWorksTable: React.FC<CompletedLabWorksTableProps> = ({ patient
             </head>
             <body>
                 <div class="watermark">
-                    <img src="/logo.png" alt="Watermark" />
+                    <img src="${logo}" alt="Watermark" />
                 </div>
                 <div class="header">
-                    <img class="logo" src="/logo.png" alt="Logo" />
+                    <img class="logo" src="${logo}" alt="Logo" />
                     <div class="header-text">
                         <div class="company-name">Aquadent Dental Clinic, Eldoret</div>
                         <div class="company-info">
@@ -471,9 +472,9 @@ const CompletedLabWorksTable: React.FC<CompletedLabWorksTableProps> = ({ patient
         const receiptHtml = `
             <!DOCTYPE html>
             <html>
-            <head>
-                <title>Receipt - ${invoiceNumber}</title>
-                <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+                <head>
+                    <title>Receipt - ${invoiceNumber}</title>
+                    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
                 <style>
                     * { margin: 0; padding: 0; box-sizing: border-box; }
                     
@@ -483,12 +484,13 @@ const CompletedLabWorksTable: React.FC<CompletedLabWorksTableProps> = ({ patient
                         margin: 0;
                         background: #f5f5f5;
                         color: #1a1a1a;
-                        line-height: 1.5;
+                        line-height: 1.3;
+                        font-size: 11px;
                     }
                     
                     .receipt-container {
-                        max-width: 800px;
-                        margin: 20px auto;
+                        max-width: 600px;
+                        margin: 10px auto;
                         background: white;
                         box-shadow: 0 4px 20px rgba(0,0,0,0.1);
                     }
@@ -497,7 +499,7 @@ const CompletedLabWorksTable: React.FC<CompletedLabWorksTableProps> = ({ patient
                     .header {
                         background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
                         color: white;
-                        padding: 35px 40px;
+                        padding: 15px 20px;
                         position: relative;
                         overflow: hidden;
                     }
@@ -507,8 +509,8 @@ const CompletedLabWorksTable: React.FC<CompletedLabWorksTableProps> = ({ patient
                         position: absolute;
                         top: -50%;
                         right: -20%;
-                        width: 400px;
-                        height: 400px;
+                        width: 200px;
+                        height: 200px;
                         background: rgba(255,255,255,0.05);
                         border-radius: 50%;
                     }
@@ -518,8 +520,8 @@ const CompletedLabWorksTable: React.FC<CompletedLabWorksTableProps> = ({ patient
                         position: absolute;
                         bottom: -60%;
                         left: -10%;
-                        width: 300px;
-                        height: 300px;
+                        width: 150px;
+                        height: 150px;
                         background: rgba(255,255,255,0.03);
                         border-radius: 50%;
                     }
@@ -529,35 +531,34 @@ const CompletedLabWorksTable: React.FC<CompletedLabWorksTableProps> = ({ patient
                         z-index: 1;
                         display: flex;
                         justify-content: space-between;
-                        align-items: flex-start;
+                        align-items: center;
                     }
                     
                     .brand {
                         display: flex;
                         align-items: center;
-                        gap: 15px;
+                        gap: 10px;
                     }
                     
                     .brand-icon {
-                        width: 60px;
-                        height: 60px;
+                        width: 40px;
+                        height: 40px;
                         background: white;
-                        border-radius: 12px;
+                        border-radius: 8px;
                         display: flex;
                         align-items: center;
                         justify-content: center;
-                        font-size: 32px;
                     }
                     
                     .brand-text h1 {
-                        font-size: 24px;
+                        font-size: 16px;
                         font-weight: 700;
-                        margin-bottom: 4px;
+                        margin-bottom: 2px;
                         letter-spacing: -0.5px;
                     }
                     
                     .brand-text p {
-                        font-size: 13px;
+                        font-size: 10px;
                         opacity: 0.9;
                         font-weight: 400;
                     }
@@ -565,64 +566,65 @@ const CompletedLabWorksTable: React.FC<CompletedLabWorksTableProps> = ({ patient
                     .receipt-badge {
                         background: rgba(255,255,255,0.2);
                         backdrop-filter: blur(10px);
-                        padding: 12px 24px;
-                        border-radius: 8px;
+                        padding: 6px 12px;
+                        border-radius: 6px;
                         text-align: right;
                     }
                     
                     .receipt-badge .label {
-                        font-size: 11px;
+                        font-size: 9px;
                         text-transform: uppercase;
                         letter-spacing: 1px;
                         opacity: 0.8;
-                        margin-bottom: 4px;
+                        margin-bottom: 2px;
                     }
                     
                     .receipt-badge .number {
-                        font-size: 18px;
+                        font-size: 12px;
                         font-weight: 700;
                     }
                     
                     /* Content area */
                     .content {
-                        padding: 40px;
+                        padding: 20px;
                     }
                     
                     /* Info grid */
                     .info-grid {
-                        display: grid;
-                        grid-template-columns: 1fr 1fr;
-                        gap: 30px;
-                        margin-bottom: 35px;
-                        padding-bottom: 30px;
+                        display: flex;
+                        justify-content: space-between;
+                        gap: 15px;
+                        margin-bottom: 15px;
+                        padding-bottom: 15px;
                         border-bottom: 1px solid #eee;
                     }
                     
                     .info-card {
+                        flex: 1;
                         background: #fafafa;
-                        padding: 20px;
-                        border-radius: 10px;
-                        border-left: 4px solid #dc2626;
+                        padding: 10px;
+                        border-radius: 6px;
+                        border-left: 3px solid #dc2626;
                     }
                     
                     .info-card h3 {
-                        font-size: 11px;
+                        font-size: 9px;
                         text-transform: uppercase;
                         letter-spacing: 1px;
                         color: #888;
-                        margin-bottom: 12px;
+                        margin-bottom: 5px;
                         font-weight: 600;
                     }
                     
                     .info-card .name {
-                        font-size: 18px;
+                        font-size: 13px;
                         font-weight: 700;
                         color: #1a1a1a;
-                        margin-bottom: 4px;
+                        margin-bottom: 2px;
                     }
                     
                     .info-card .detail {
-                        font-size: 14px;
+                        font-size: 11px;
                         color: #666;
                     }
                     
@@ -630,38 +632,49 @@ const CompletedLabWorksTable: React.FC<CompletedLabWorksTableProps> = ({ patient
                         display: inline-block;
                         background: #dc2626;
                         color: white;
-                        padding: 4px 12px;
-                        border-radius: 20px;
-                        font-size: 12px;
+                        padding: 2px 8px;
+                        border-radius: 12px;
+                        font-size: 10px;
                         font-weight: 600;
-                        margin-top: 10px;
+                        margin-top: 5px;
                     }
                     
                     /* Section styling */
                     .section {
-                        margin-bottom: 30px;
+                        margin-bottom: 15px;
                     }
                     
                     .section-title {
-                        font-size: 12px;
+                        font-size: 10px;
                         font-weight: 700;
                         color: #dc2626;
                         text-transform: uppercase;
-                        letter-spacing: 1.5px;
-                        margin-bottom: 15px;
-                        padding-bottom: 8px;
-                        border-bottom: 2px solid #dc2626;
+                        letter-spacing: 1px;
+                        margin-bottom: 8px;
+                        padding-bottom: 4px;
+                        border-bottom: 1px solid #dc2626;
                         display: inline-block;
                     }
                     
                     .procedures-box {
                         background: linear-gradient(135deg, #fff5f5 0%, #fef2f2 100%);
                         border: 1px solid #fecaca;
-                        padding: 20px;
-                        border-radius: 10px;
-                        line-height: 1.8;
+                        padding: 10px;
+                        border-radius: 6px;
+                        line-height: 1.4;
                         color: #1a1a1a;
-                        font-size: 14px;
+                        font-size: 11px;
+                    }
+                    
+                    /* Cost Summary Container - Side by Side */
+                    .summary-container {
+                        display: flex;
+                        gap: 15px;
+                        margin-bottom: 15px;
+                    }
+                    
+                    .summary-col {
+                        flex: 1;
                     }
                     
                     /* Tables */
@@ -674,21 +687,21 @@ const CompletedLabWorksTable: React.FC<CompletedLabWorksTableProps> = ({ patient
                     th {
                         background: #dc2626;
                         color: white;
-                        padding: 14px 16px;
+                        padding: 8px 10px;
                         text-align: left;
-                        font-size: 11px;
+                        font-size: 10px;
                         text-transform: uppercase;
                         letter-spacing: 0.5px;
                         font-weight: 600;
                     }
                     
-                    th:first-child { border-radius: 8px 0 0 0; }
-                    th:last-child { border-radius: 0 8px 0 0; }
+                    th:first-child { border-radius: 6px 0 0 0; }
+                    th:last-child { border-radius: 0 6px 0 0; }
                     
                     td {
-                        padding: 14px 16px;
+                        padding: 8px 10px;
                         border-bottom: 1px solid #f0f0f0;
-                        font-size: 14px;
+                        font-size: 11px;
                     }
                     
                     tr:hover td {
@@ -704,7 +717,7 @@ const CompletedLabWorksTable: React.FC<CompletedLabWorksTableProps> = ({ patient
                     /* Cost breakdown */
                     .cost-card {
                         background: #fafafa;
-                        border-radius: 12px;
+                        border-radius: 8px;
                         overflow: hidden;
                         border: 1px solid #eee;
                     }
@@ -712,9 +725,9 @@ const CompletedLabWorksTable: React.FC<CompletedLabWorksTableProps> = ({ patient
                     .cost-row {
                         display: flex;
                         justify-content: space-between;
-                        padding: 16px 20px;
+                        padding: 8px 12px;
                         border-bottom: 1px solid #eee;
-                        font-size: 14px;
+                        font-size: 11px;
                     }
                     
                     .cost-row:last-child {
@@ -725,7 +738,7 @@ const CompletedLabWorksTable: React.FC<CompletedLabWorksTableProps> = ({ patient
                         background: #dc2626;
                         color: white;
                         font-weight: 700;
-                        font-size: 16px;
+                        font-size: 12px;
                     }
                     
                     .cost-row .label {
@@ -743,222 +756,211 @@ const CompletedLabWorksTable: React.FC<CompletedLabWorksTableProps> = ({ patient
                     }
                     
                     /* Balance box */
+                    .balance-wrapper {
+                        margin-top: 15px;
+                        display: flex;
+                        justify-content: flex-end;
+                    }
+
                     .balance-box {
-                        margin-top: 30px;
-                        padding: 30px;
-                        border-radius: 12px;
+                        padding: 15px 25px;
+                        border-radius: 8px;
                         text-align: center;
                         background: ${balance > 0 ? 'linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)' : 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)'};
-                        border: 2px solid ${balance > 0 ? '#fca5a5' : '#86efac'};
+                        border: 1px solid ${balance > 0 ? '#fca5a5' : '#86efac'};
+                        min-width: 200px;
                     }
                     
                     .balance-box .status {
-                        font-size: 12px;
+                        font-size: 10px;
                         font-weight: 700;
                         text-transform: uppercase;
-                        letter-spacing: 2px;
+                        letter-spacing: 1px;
                         color: ${balance > 0 ? '#dc2626' : '#16a34a'};
-                        margin-bottom: 8px;
+                        margin-bottom: 4px;
                     }
                     
                     .balance-box .amount {
-                        font-size: 42px;
+                        font-size: 24px;
                         font-weight: 800;
                         color: ${balance > 0 ? '#dc2626' : '#16a34a'};
-                        letter-spacing: -1px;
+                        letter-spacing: -0.5px;
                     }
                     
                     /* Footer */
                     .footer {
                         background: #1a1a1a;
                         color: white;
-                        padding: 30px 40px;
+                        padding: 15px 20px;
                         text-align: center;
                     }
                     
                     .footer p {
-                        font-size: 14px;
-                        margin-bottom: 5px;
+                        font-size: 10px;
+                        margin-bottom: 3px;
                     }
                     
                     .footer .tagline {
                         color: #dc2626;
                         font-weight: 600;
-                        font-size: 16px;
-                        margin-bottom: 10px;
+                        font-size: 11px;
+                        margin-bottom: 5px;
                     }
                     
                     .footer .contact {
                         color: #888;
-                        font-size: 12px;
+                        font-size: 9px;
                     }
                     
                     /* Print buttons */
                     .no-print {
                         text-align: center;
-                        padding: 30px;
+                        padding: 15px;
                         background: #f5f5f5;
                     }
                     
                     .btn {
                         display: inline-block;
-                        padding: 14px 32px;
-                        font-size: 14px;
+                        padding: 10px 20px;
+                        font-size: 12px;
                         font-weight: 600;
                         border: none;
-                        border-radius: 8px;
+                        border-radius: 6px;
                         cursor: pointer;
                         transition: all 0.2s;
-                        margin: 0 8px;
+                        margin: 0 5px;
                     }
                     
-                    .btn-primary {
-                        background: #dc2626;
-                        color: white;
-                    }
-                    
-                    .btn-primary:hover {
-                        background: #b91c1c;
-                        transform: translateY(-2px);
-                        box-shadow: 0 4px 12px rgba(220,38,38,0.3);
-                    }
-                    
-                    .btn-secondary {
-                        background: #e5e5e5;
-                        color: #333;
-                    }
-                    
-                    .btn-secondary:hover {
-                        background: #d4d4d4;
-                    }
+                    .btn-primary { background: #dc2626; color: white; }
+                    .btn-secondary { background: #e5e5e5; color: #333; }
                     
                     @media print {
-                        body { 
-                            background: white;
-                            padding: 0;
-                        }
-                        .receipt-container {
-                            box-shadow: none;
-                            margin: 0;
-                        }
+                        body { background: white; padding: 0; }
+                        .receipt-container { box-shadow: none; margin: 0; max-width: 100%; width: 100%; }
                         .no-print { display: none !important; }
-                        .header { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
-                        .footer { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
-                        th { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
-                        .balance-box { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
-                        .cost-row.highlight { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+                        .header, .footer, th, .balance-box, .cost-row.highlight { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+                        @page { margin: 0.5cm; size: auto; }
                     }
                 </style>
-            </head>
-            <body>
-                <div class="receipt-container">
-                    <div class="header">
-                        <div class="header-content">
-                            <div class="brand">
-                                <div class="brand-icon">🦷</div>
-                                <div class="brand-text">
-                                    <h1>Aquadent Dental Clinic</h1>
-                                    <p>Excellence in Dental Care • Eldoret, Kenya</p>
+                </head>
+                <body>
+                    <div class="receipt-container">
+                        <div class="header">
+                            <div class="header-content">
+                                <div class="brand">
+                                    <div class="brand-icon">
+                                        <img src="${logo}" alt="Aquadent" style="width: 100%; height: 100%; object-fit: contain; padding: 3px;" />
+                                    </div>
+                                    <div class="brand-text">
+                                        <h1>Aquadent Dental Clinic</h1>
+                                        <p>restore your smile</p>
+                                    </div>
+                                </div>
+                                <div class="receipt-badge">
+                                    <div class="label">Receipt</div>
+                                    <div class="number">${invoiceNumber}</div>
                                 </div>
                             </div>
-                            <div class="receipt-badge">
-                                <div class="label">Official Receipt</div>
-                                <div class="number">${invoiceNumber}</div>
-                            </div>
                         </div>
-                    </div>
-                    
-                    <div class="content">
-                        <div class="info-grid">
-                            <div class="info-card">
-                                <h3>Patient Information</h3>
-                                <div class="name">${p.name}</div>
-                                <div class="detail">${p.contacts}</div>
-                                <div class="patient-no">ID: #${p.no}</div>
+
+                        <div class="content">
+                            <div class="info-grid">
+                                <div class="info-card">
+                                    <h3>Patient</h3>
+                                    <div class="name">${p.name}</div>
+                                    <div class="detail">${p.contacts}</div>
+                                    <div class="patient-no">ID: #${p.no}</div>
+                                </div>
+                                <div class="info-card" style="text-align: right; border-left: none; border-right: 3px solid #dc2626;">
+                                    <h3>Details</h3>
+                                    <div class="name">${receiptDate}</div>
+                                    <div class="detail">Payment Receipt</div>
+                                </div>
                             </div>
-                            <div class="info-card">
-                                <h3>Receipt Details</h3>
-                                <div class="name">${receiptDate}</div>
-                                <div class="detail">Payment Receipt</div>
-                            </div>
-                        </div>
-                        
-                        ${p.procedure && p.procedure.length > 0 ? `
+
+                            ${p.procedure && p.procedure.length > 0 ? `
                             <div class="section">
                                 <div class="section-title">Clinical Procedures</div>
                                 <div class="procedures-box">${p.procedure.join(' • ')}</div>
                             </div>
                         ` : ""}
-                        
-                        ${p.lab_procedures ? `
+
+                            ${p.lab_procedures ? `
                             <div class="section">
                                 <div class="section-title">Laboratory Procedures</div>
                                 <div class="procedures-box">${p.lab_procedures}</div>
                             </div>
                         ` : ""}
-                        
-                        <div class="section">
-                            <div class="section-title">Cost Summary</div>
-                            <div class="cost-card">
-                                <div class="cost-row">
-                                    <span class="label">Laboratory Services</span>
-                                    <span class="amount">Ksh ${(p.lab_cost || 0).toLocaleString()}</span>
-                                </div>
-                                <div class="cost-row">
-                                    <span class="label">Clinical Services</span>
-                                    <span class="amount">Ksh ${(p.clinic_cost || 0).toLocaleString()}</span>
-                                </div>
-                                <div class="cost-row highlight">
-                                    <span class="label">TOTAL COST</span>
-                                    <span class="amount">Ksh ${totalCost.toLocaleString()}</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="section">
-                            <div class="section-title">Payments Received</div>
-                            <div class="cost-card">
-                                <div class="cost-row">
-                                    <span class="label">Insurance Coverage</span>
-                                    <span class="amount">Ksh ${(p.insurance_amount || 0).toLocaleString()}</span>
-                                </div>
-                                <div class="cost-row">
-                                    <span class="label">Cash Payment</span>
-                                    <span class="amount">Ksh ${(p.cash_amount || 0).toLocaleString()}</span>
-                                </div>
-                                ${installmentsTotal > 0 ? `
-                                    <div class="cost-row">
-                                        <span class="label">Installments (${(p.installments || []).length} payments)</span>
-                                        <span class="amount">Ksh ${installmentsTotal.toLocaleString()}</span>
+
+                            <div class="summary-container">
+                                <div class="summary-col">
+                                    <div class="section">
+                                        <div class="section-title">Cost Summary</div>
+                                        <div class="cost-card">
+                                            <div class="cost-row">
+                                                <span class="label">Laboratory</span>
+                                                <span class="amount">Ksh ${(p.lab_cost || 0).toLocaleString()}</span>
+                                            </div>
+                                            <div class="cost-row">
+                                                <span class="label">Clinical</span>
+                                                <span class="amount">Ksh ${(p.clinic_cost || 0).toLocaleString()}</span>
+                                            </div>
+                                            <div class="cost-row highlight">
+                                                <span class="label">TOTAL</span>
+                                                <span class="amount">Ksh ${totalCost.toLocaleString()}</span>
+                                            </div>
+                                        </div>
                                     </div>
-                                ` : ""}
-                                <div class="cost-row highlight">
-                                    <span class="label">TOTAL PAID</span>
-                                    <span class="amount">Ksh ${((p.insurance_amount || 0) + (p.cash_amount || 0) + installmentsTotal).toLocaleString()}</span>
+                                </div>
+
+                                <div class="summary-col">
+                                    <div class="section">
+                                        <div class="section-title">Payments</div>
+                                        <div class="cost-card">
+                                            <div class="cost-row">
+                                                <span class="label">Insurance</span>
+                                                <span class="amount">Ksh ${(p.insurance_amount || 0).toLocaleString()}</span>
+                                            </div>
+                                            <div class="cost-row">
+                                                <span class="label">Cash</span>
+                                                <span class="amount">Ksh ${(p.cash_amount || 0).toLocaleString()}</span>
+                                            </div>
+                                            ${installmentsTotal > 0 ? `
+                                            <div class="cost-row">
+                                                <span class="label">Inst. x${(p.installments || []).length}</span>
+                                                <span class="amount">Ksh ${installmentsTotal.toLocaleString()}</span>
+                                            </div>
+                                        ` : ""}
+                                            <div class="cost-row highlight">
+                                                <span class="label">PAID</span>
+                                                <span class="amount">Ksh ${((p.insurance_amount || 0) + (p.cash_amount || 0) + installmentsTotal).toLocaleString()}</span>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        
-                        ${installmentsHtml}
-                        
-                        <div class="balance-box">
-                            <div class="status">${balance > 0 ? 'Balance Due' : balance < 0 ? 'Overpayment' : '✓ Paid in Full'}</div>
-                            <div class="amount">Ksh ${Math.abs(balance).toLocaleString()}</div>
+
+                            ${installmentsHtml}
+
+                            <div class="balance-wrapper">
+                                <div class="balance-box">
+                                    <div class="status">${balance > 0 ? 'Balance Due' : balance < 0 ? 'Overpayment' : '✓ Paid in Full'}</div>
+                                    <div class="amount">Ksh ${Math.abs(balance).toLocaleString()}</div>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    
+
                     <div class="footer">
                         <p class="tagline">Thank you for choosing Aquadent Dental Clinic!</p>
-                        <p>Your smile is our priority</p>
-                        <p class="contact">📧 info@aquadent.co.ke • 📞 +254 700 000 000 • 📍 Eldoret, Kenya</p>
+                        <p class="contact">info@aquadent.co.ke • +254 700 000 000 • Eldoret, Kenya</p>
                     </div>
-                </div>
-                
-                <div class="no-print">
-                    <button class="btn btn-primary" onclick="window.print()">🖨️ Print Receipt</button>
-                    <button class="btn btn-secondary" onclick="window.close()">Close</button>
-                </div>
-            </body>
+
+                    <div class="no-print">
+                        <button class="btn btn-primary" onclick="window.print()">🖨️ Print Receipt</button>
+                        <button class="btn btn-secondary" onclick="window.close()">Close</button>
+                    </div>
+                </body>
             </html>
         `;
 
@@ -1023,7 +1025,7 @@ const CompletedLabWorksTable: React.FC<CompletedLabWorksTableProps> = ({ patient
                                         <div className="truncate" title={p.lab_notes}>{p.lab_notes || '-'}</div>
                                     </td>
                                     <td className="p-3">
-                                        <span className={`text-xs px-2 py-1 rounded-full ${p.lab_type === 'Internal' ? 'bg-blue-50 text-blue-700' : 'bg-orange-50 text-orange-700'}`}>
+                                        <span className={`text - xs px - 2 py - 1 rounded - full ${p.lab_type === 'Internal' ? 'bg-blue-50 text-blue-700' : 'bg-orange-50 text-orange-700'} `}>
                                             {p.lab_type || 'Internal'}
                                         </span>
                                     </td>
@@ -1054,7 +1056,7 @@ const CompletedLabWorksTable: React.FC<CompletedLabWorksTableProps> = ({ patient
                                         )}
                                     </td>
                                     <td className="p-3 bg-blue-50/30">
-                                        <span className={`font-semibold ${calculateBalance(p) > 0 ? 'text-red-600' : calculateBalance(p) < 0 ? 'text-green-600' : 'text-gray-600'}`}>
+                                        <span className={`font - semibold ${calculateBalance(p) > 0 ? 'text-red-600' : calculateBalance(p) < 0 ? 'text-green-600' : 'text-gray-600'} `}>
                                             {calculateBalance(p).toLocaleString()}
                                         </span>
                                     </td>
@@ -1173,7 +1175,7 @@ const CompletedLabWorksTable: React.FC<CompletedLabWorksTableProps> = ({ patient
                                     type="number"
                                     value={formData.insurance_amount || ''}
                                     onChange={(e) => setFormData(prev => ({ ...prev, insurance_amount: parseFloat(e.target.value) || 0 }))}
-                                    className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isPriceLocked ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                                    className={`w - full px - 3 py - 2 border rounded - md focus: ring - 2 focus: ring - blue - 500 focus: border - blue - 500 ${isPriceLocked ? 'bg-gray-100 cursor-not-allowed' : ''} `}
                                     placeholder="Enter insurance amount"
                                     disabled={isPriceLocked}
                                 />
@@ -1188,7 +1190,7 @@ const CompletedLabWorksTable: React.FC<CompletedLabWorksTableProps> = ({ patient
                                     type="number"
                                     value={formData.cash_amount || ''}
                                     onChange={(e) => setFormData(prev => ({ ...prev, cash_amount: parseFloat(e.target.value) || 0 }))}
-                                    className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isPriceLocked ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                                    className={`w - full px - 3 py - 2 border rounded - md focus: ring - 2 focus: ring - blue - 500 focus: border - blue - 500 ${isPriceLocked ? 'bg-gray-100 cursor-not-allowed' : ''} `}
                                     placeholder="Enter cash amount"
                                     disabled={isPriceLocked}
                                 />
@@ -1265,9 +1267,9 @@ const CompletedLabWorksTable: React.FC<CompletedLabWorksTableProps> = ({ patient
                             </div>
 
                             {/* Balance (auto-calculated) */}
-                            <div className={`flex justify-between items-center py-3 px-4 rounded-lg ${calculateFormBalance() > 0 ? 'bg-red-50 border border-red-200' : calculateFormBalance() < 0 ? 'bg-green-50 border border-green-200' : 'bg-gray-50'}`}>
+                            <div className={`flex justify - between items - center py - 3 px - 4 rounded - lg ${calculateFormBalance() > 0 ? 'bg-red-50 border border-red-200' : calculateFormBalance() < 0 ? 'bg-green-50 border border-green-200' : 'bg-gray-50'} `}>
                                 <span className="text-sm font-medium text-gray-700">Balance Due</span>
-                                <span className={`font-bold text-xl ${calculateFormBalance() > 0 ? 'text-red-600' : calculateFormBalance() < 0 ? 'text-green-600' : 'text-gray-600'}`}>
+                                <span className={`font - bold text - xl ${calculateFormBalance() > 0 ? 'text-red-600' : calculateFormBalance() < 0 ? 'text-green-600' : 'text-gray-600'} `}>
                                     {calculateFormBalance().toLocaleString()}
                                 </span>
                             </div>

@@ -171,7 +171,8 @@ export default function Clinic() {
     today.setHours(0, 0, 0, 0);
 
     return patients.filter(p => {
-      if (!p.created_at) return true;
+      if (timeFilter === 'All') return true;
+      if (!p.created_at) return false;
       const d = new Date(p.created_at);
       if (timeFilter === 'Today') return d >= today;
       const diffDays = (today.getTime() - d.getTime()) / (1000 * 60 * 60 * 24);
