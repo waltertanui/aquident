@@ -36,6 +36,7 @@ export interface PatientRecord {
   lab_procedures?: string;
   lab_notes?: string;
   lab_type?: "Internal" | "External";
+  lab_completion_date?: string;
   // ADD: Payment/billing fields
   clinic_cost?: number;
   insurance_amount?: number;
@@ -103,6 +104,7 @@ export async function listWalkins(): Promise<PatientRecord[]> {
     lab_procedures: row.lab_procedures ?? "",
     lab_notes: row.lab_notes ?? "",
     lab_type: row.lab_type ?? "Internal",
+    lab_completion_date: row.lab_completion_date ?? undefined,
     // Payment fields
     clinic_cost: row.clinic_cost ?? 0,
     insurance_amount: row.insurance_amount ?? 0,
@@ -175,6 +177,7 @@ export async function createWalkin(input: WalkinInput, dob?: string): Promise<Pa
     lab_procedures: "",
     lab_notes: "",
     lab_type: "Internal",
+    lab_completion_date: undefined,
     clinic_cost: 0,
     insurance_amount: 0,
     cash_amount: 0,

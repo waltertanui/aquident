@@ -652,12 +652,13 @@ export default function Clinic() {
               <th className="py-2 px-2 border-r">CARD</th>
               <th className="py-2 px-2 border-r">CONSENT</th>
               <th className="py-2 px-2 border-r">OPG</th>
+              <th className="py-2 px-2 border-r">DATE TO BE COMPLETED</th>
               <th className="py-2 px-2">STATUS</th>
             </tr>
           </thead>
           <tbody className="text-xs text-slate-700">
             {completedPatients.length === 0 ? (
-              <tr><td colSpan={8} className="py-4 text-center text-gray-500">No completed treatments yet.</td></tr>
+              <tr><td colSpan={9} className="py-4 text-center text-gray-500">No completed treatments yet.</td></tr>
             ) : (
               completedPatients.map(p => (
                 <tr key={p.no} className="border-b last:border-0 hover:bg-slate-50">
@@ -695,6 +696,9 @@ export default function Clinic() {
                         <input type="file" accept="application/pdf" className="hidden" onChange={(e) => e.target.files?.[0] && handleDocUpload(p.no, e.target.files[0], 'opg_document_url')} />
                       </label>
                     )}
+                  </td>
+                  <td className="py-2 px-2 border-r">
+                    {p.lab_completion_date || '-'}
                   </td>
                   <td className="py-2 px-2">
                     <span className={`rounded-full px-2 py-1 text-xs capitalize ${p.status === 'lab'

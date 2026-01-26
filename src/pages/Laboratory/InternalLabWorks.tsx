@@ -14,6 +14,7 @@ type WorkOrderForm = {
   lab_type: "Internal" | "External";
   lab_cost: number;
   notes: string;
+  lab_completion_date: string;
 };
 // Add middleware import
 import { listWalkins, updateWalkin, type PatientRecord, type TimeRange } from "../../middleware/data";
@@ -29,6 +30,7 @@ function InternalLabWorks() {
     lab_type: "Internal",
     lab_cost: 0,
     notes: "",
+    lab_completion_date: new Date().toISOString().split('T')[0],
   });
 
   // Lab Queue state
@@ -79,6 +81,7 @@ function InternalLabWorks() {
       lab_type: "Internal",
       lab_cost: 0,
       notes: "",
+      lab_completion_date: new Date().toISOString().split('T')[0],
     });
   };
 
@@ -107,6 +110,7 @@ function InternalLabWorks() {
       lab_notes: form.notes,
       lab_type: form.lab_type,
       lab_cost: Number(form.lab_cost),
+      lab_completion_date: form.lab_completion_date,
     };
 
     try {
@@ -126,6 +130,7 @@ function InternalLabWorks() {
         lab_type: "Internal",
         lab_cost: 0,
         notes: "",
+        lab_completion_date: new Date().toISOString().split('T')[0],
       });
 
       setSelectedPatient(null);
@@ -140,6 +145,17 @@ function InternalLabWorks() {
       setSubmitting(false);
     }
   }
+
+  // Handle inline date change in queue
+  const handleDateChange = async (patientNo: number, newDate: string) => {
+    try {
+      await updateWalkin(patientNo, { lab_completion_date: newDate });
+      // We should ideally optimistic update or invalidate
+      queryClient.invalidateQueries({ queryKey: ['walkins'] });
+    } catch (e) {
+      console.error("Failed to update date", e);
+    }
+  };
 
   return (
     <div className="p-6 space-y-6">
@@ -174,13 +190,14 @@ function InternalLabWorks() {
                 <th className="p-2">PATIENT</th>
                 <th className="p-2">DOCTOR</th>
                 <th className="p-2">PROCEDURES</th>
+                <th className="p-2">DATE TO BE COMPLETED</th>
                 <th className="p-2">ACTION</th>
               </tr>
             </thead>
             <tbody>
               {labPatients.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="p-4 text-center text-slate-500">No patients in lab queue.</td>
+                  <td colSpan={6} className="p-4 text-center text-slate-500">No patients in lab queue.</td>
                 </tr>
               ) : (
                 labPatients.map((p) => (
@@ -193,6 +210,14 @@ function InternalLabWorks() {
                     <td className="p-2 font-medium">{p.name}</td>
                     <td className="p-2">{p.doc_name || '-'}</td>
                     <td className="p-2">{p.procedure?.join(', ') || '-'}</td>
+                    <td className="p-2" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="date"
+                        className="border rounded px-2 py-1 text-xs"
+                        value={p.lab_completion_date || ""}
+                        onChange={(e) => handleDateChange(p.no, e.target.value)}
+                      />
+                    </td>
                     <td className="p-2">
                       <button className="text-blue-600 underline">Select</button>
                     </td>
@@ -256,6 +281,17 @@ function InternalLabWorks() {
                     Ksh {form.lab_cost.toLocaleString()}
                   </div>
                 </div>
+              </div>
+
+              {/* Lab Completion Date */}
+              <div>
+                <label className="block text-xs text-gray-700 font-medium mb-1">Date To Be Completed</label>
+                <input
+                  type="date"
+                  value={form.lab_completion_date}
+                  onChange={(e) => updateForm("lab_completion_date", e.target.value)}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                />
               </div>
 
               {/* Lab Procedures Text Area (Editable) */}
