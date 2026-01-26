@@ -5,6 +5,7 @@ import Card from "../../ui/Card";
 import LabProcedures from "./LabProcedures";
 import InventoryRequestModal from "../../components/InventoryRequestModal";
 import { listExternalLabOrders, type ExternalLabOrder } from "../../middleware/data";
+import logo from "../../assets/aquadent_logo.png";
 
 // ────────────────────────────────────────────────
 // TYPES (kept minimal)
@@ -191,6 +192,219 @@ export default function ExternalLabWorks() {
     }
   };
 
+  // Print Invoice function (for formal records/insurance)
+  const printInvoice = (order: ExternalLabOrder) => {
+    const invoiceWindow = window.open("", "_blank");
+    if (!invoiceWindow) {
+      alert("Please allow pop-ups to print invoices");
+      return;
+    }
+
+    const now = new Date();
+    const printDate = now.toLocaleDateString("en-KE", { day: "2-digit", month: "short", year: "numeric" });
+    const printTime = now.toLocaleTimeString("en-KE", { hour: "2-digit", minute: "2-digit" });
+    const voucherNo = `INV-${order.id.slice(0, 8).toUpperCase()}`;
+
+    // Build item rows
+    const itemRows = (order.items || []).map((item, idx) => {
+      return `
+        <tr>
+          <td>${idx + 1}</td>
+          <td>${item.product}</td>
+          <td>${item.material}</td>
+          <td style="text-align: center;">${item.quantity}</td>
+          <td>${item.specs || "-"}</td>
+        </tr>
+      `;
+    }).join("");
+
+    const totalAmount = order.quote?.total ?? order.lab_cost ?? 0;
+
+    const invoiceHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Invoice - ${voucherNo}</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { 
+            font-family: 'Courier New', monospace; 
+            font-size: 12px;
+            padding: 20px; 
+            max-width: 800px; 
+            margin: 0 auto;
+            color: #000;
+          }
+          .header { 
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px; 
+            border-bottom: 1px solid #000;
+            padding-bottom: 10px;
+          }
+          .logo { 
+            width: 60px; 
+            height: 60px; 
+            margin-right: 15px;
+          }
+          .header-text { flex: 1; text-align: center; }
+          .company-name { font-size: 18px; font-weight: bold; }
+          .company-info { font-size: 11px; line-height: 1.4; }
+          .invoice-title { 
+            text-align: center; 
+            font-size: 14px; 
+            font-weight: bold; 
+            margin: 15px 0;
+            text-decoration: underline;
+          }
+          .info-grid { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 5px;
+            margin-bottom: 15px;
+          }
+          .info-row { display: flex; }
+          .info-label { width: 120px; font-weight: bold; }
+          table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin: 15px 0; 
+            font-size: 11px;
+          }
+          th, td { border: 1px solid #000; padding: 4px 6px; }
+          th { background: #f0f0f0; font-weight: bold; }
+          .totals { margin-top: 10px; }
+          .totals-row { 
+            display: flex; 
+            justify-content: space-between; 
+            padding: 3px 0;
+            border-bottom: 1px dotted #ccc;
+          }
+          .totals-row.final { 
+            font-weight: bold; 
+            border-bottom: 2px solid #000;
+            border-top: 1px solid #000;
+            padding: 5px 0;
+          }
+          .signature { margin-top: 30px; }
+          .no-print { margin-top: 20px; text-align: center; }
+          .watermark {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            opacity: 0.08;
+            z-index: -1;
+          }
+          .watermark img { width: 300px; height: 300px; }
+          @media print {
+            body { padding: 10px; }
+            .no-print { display: none; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="watermark">
+          <img src="${logo}" alt="Watermark" />
+        </div>
+        <div class="header">
+          <img class="logo" src="${logo}" alt="Logo" />
+          <div class="header-text">
+            <div class="company-name">Aquadent Dental Clinic, Eldoret</div>
+            <div class="company-info">
+              P.O. Box 1234, Eldoret. Telephone: 053-2030000, 0722-000000<br>
+              Mobile: 0722 000000, 0733 000000 Fax: 053-2030001<br>
+              E-mail: info@aquadent.co.ke
+            </div>
+          </div>
+        </div>
+
+        <div class="invoice-title">EXTERNAL LAB INVOICE</div>
+
+        <div class="info-grid">
+          <div>
+            <div class="info-row"><span class="info-label">Print Date:</span> <span>${printDate} ${printTime}</span></div>
+            <div class="info-row"><span class="info-label">Invoice No.:</span> <span>${voucherNo}</span></div>
+            <div class="info-row"><span class="info-label">Doctor:</span> <span>${order.doctor_name?.toUpperCase()}</span></div>
+            <div class="info-row"><span class="info-label">Institution:</span> <span>${order.institution}</span></div>
+          </div>
+          <div>
+            <div class="info-row"><span class="info-label">Expected Date:</span> <span>${order.expected_date || "TBD"}</span></div>
+            <div class="info-row"><span class="info-label">Shipping:</span> <span>${order.shipping_method || "Courier"}</span></div>
+            <div class="info-row"><span class="info-label">Status:</span> <span>${order.status?.toUpperCase()}</span></div>
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>No.</th>
+              <th>Product</th>
+              <th>Material</th>
+              <th>Qty</th>
+              <th>Specifications</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${itemRows || `<tr><td colspan="5" style="text-align: center;">No items</td></tr>`}
+          </tbody>
+        </table>
+
+        ${order.lab_procedures ? `
+          <div style="margin-bottom: 15px;">
+            <strong>Lab Procedures:</strong><br>
+            ${order.lab_procedures}
+          </div>
+        ` : ""}
+
+        ${order.notes ? `
+          <div style="margin-bottom: 15px;">
+            <strong>Notes:</strong><br>
+            ${order.notes}
+          </div>
+        ` : ""}
+
+        <div class="totals">
+          <div class="totals-row"><span>Subtotal</span><span>Ksh ${(order.quote?.subtotal ?? order.lab_cost ?? 0).toLocaleString()}</span></div>
+          <div class="totals-row"><span>Tax</span><span>Ksh ${(order.quote?.tax ?? 0).toLocaleString()}</span></div>
+          <div class="totals-row final"><span>Total Amount</span><span>Ksh ${totalAmount.toLocaleString()}</span></div>
+        </div>
+
+        <div class="signature">
+          <p>Authorized by: ___________________</p>
+          <p style="margin-top: 10px;">Date: ___________________</p>
+        </div>
+
+        <div class="no-print">
+          <button onclick="window.print()" style="
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 10px 25px;
+            font-size: 14px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-right: 10px;
+          ">🖨️ Print Invoice</button>
+          <button onclick="window.close()" style="
+            background: #6b7280;
+            color: white;
+            border: none;
+            padding: 10px 25px;
+            font-size: 14px;
+            border-radius: 5px;
+            cursor: pointer;
+          ">Close</button>
+        </div>
+      </body>
+      </html>
+    `;
+
+    invoiceWindow.document.write(invoiceHtml);
+    invoiceWindow.document.close();
+  };
+
+  // Print Receipt function (for cash payments/quick receipts)
   const printReceipt = (order: ExternalLabOrder) => {
     const receiptWindow = window.open("", "_blank");
     if (!receiptWindow) {
@@ -206,14 +420,14 @@ export default function ExternalLabWorks() {
         year: "numeric", month: "long", day: "numeric"
       });
 
-    const invoiceNumber = `INV-${order.id.slice(0, 8).toUpperCase()}`;
+    const invoiceNumber = `RCP-${order.id.slice(0, 8).toUpperCase()}`;
+    const totalAmount = order.quote?.total ?? order.lab_cost ?? 0;
 
     const itemsHtml = (order.items || []).map(item => `
       <tr>
-        <td style="padding: 8px; border-bottom: 1px solid #eee;">${item.product}</td>
-        <td style="padding: 8px; border-bottom: 1px solid #eee;">${item.material}</td>
-        <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity}</td>
-        <td style="padding: 8px; border-bottom: 1px solid #eee;">${item.specs || "-"}</td>
+        <td style="padding: 8px; border-bottom: 1px solid #f0f0f0;">${item.product}</td>
+        <td style="padding: 8px; border-bottom: 1px solid #f0f0f0;">${item.material}</td>
+        <td style="padding: 8px; border-bottom: 1px solid #f0f0f0; text-align: center;">${item.quantity}</td>
       </tr>
     `).join("");
 
@@ -222,197 +436,256 @@ export default function ExternalLabWorks() {
       <html>
       <head>
         <title>Receipt - ${invoiceNumber}</title>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
         <style>
           * { margin: 0; padding: 0; box-sizing: border-box; }
           body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            padding: 40px; 
-            max-width: 800px; 
-            margin: 0 auto;
-            color: #333;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; 
+            padding: 0;
+            margin: 0;
+            background: #f5f5f5;
+            color: #1a1a1a;
+            line-height: 1.3;
+            font-size: 11px;
           }
-          .header { 
-            text-align: center; 
-            margin-bottom: 30px; 
-            padding-bottom: 20px;
-            border-bottom: 2px solid #2563eb;
+          .receipt-container {
+            max-width: 600px;
+            margin: 10px auto;
+            background: white;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
           }
-          .logo { 
-            font-size: 28px; 
-            font-weight: bold; 
-            color: #2563eb; 
-            margin-bottom: 5px;
-          }
-          .subtitle { color: #666; font-size: 14px; }
-          .invoice-info {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 30px;
-            background: #f8fafc;
-            padding: 20px;
-            border-radius: 8px;
-          }
-          .invoice-info div { line-height: 1.8; }
-          .label { color: #666; font-size: 12px; text-transform: uppercase; }
-          .value { font-weight: 600; color: #333; }
-          .section-title { 
-            font-size: 14px; 
-            font-weight: 600; 
-            color: #2563eb;
-            margin: 25px 0 15px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-          }
-          table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-          th { 
-            background: #2563eb; 
-            color: white; 
-            padding: 12px 8px; 
-            text-align: left;
-            font-size: 12px;
-            text-transform: uppercase;
-          }
-          td { padding: 10px 8px; border-bottom: 1px solid #eee; }
-          .procedures {
-            background: #f8fafc;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            line-height: 1.6;
-          }
-          .total-section {
+          .header {
             background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
             color: white;
-            padding: 25px;
-            border-radius: 8px;
-            margin-top: 30px;
+            padding: 15px 20px;
+            position: relative;
           }
-          .total-row {
+          .header-content {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 10px;
-            font-size: 14px;
+            align-items: center;
           }
-          .total-row.grand {
-            font-size: 24px;
-            font-weight: bold;
-            padding-top: 15px;
-            border-top: 1px solid rgba(255,255,255,0.3);
-            margin-top: 15px;
-            margin-bottom: 0;
+          .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
           }
-          .footer {
-            text-align: center;
-            margin-top: 40px;
-            padding-top: 20px;
-            border-top: 1px solid #eee;
-            color: #666;
+          .brand-icon {
+            width: 40px;
+            height: 40px;
+            background: white;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+          .brand-text h1 {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 2px;
+          }
+          .brand-text p {
+            font-size: 10px;
+            opacity: 0.9;
+          }
+          .receipt-badge {
+            background: rgba(255,255,255,0.2);
+            padding: 6px 12px;
+            border-radius: 6px;
+            text-align: right;
+          }
+          .receipt-badge .label {
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            opacity: 0.8;
+          }
+          .receipt-badge .number {
             font-size: 12px;
+            font-weight: 700;
           }
-          .notes {
-            background: #fffbeb;
-            border-left: 4px solid #f59e0b;
+          .content { padding: 20px; }
+          .info-grid {
+            display: flex;
+            justify-content: space-between;
+            gap: 15px;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+          }
+          .info-card {
+            flex: 1;
+            background: #fafafa;
+            padding: 10px;
+            border-radius: 6px;
+            border-left: 3px solid #2563eb;
+          }
+          .info-card h3 {
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #888;
+            margin-bottom: 5px;
+            font-weight: 600;
+          }
+          .info-card .name {
+            font-size: 13px;
+            font-weight: 700;
+            color: #1a1a1a;
+            margin-bottom: 2px;
+          }
+          .info-card .detail {
+            font-size: 11px;
+            color: #666;
+          }
+          .section { margin-bottom: 15px; }
+          .section-title {
+            font-size: 10px;
+            font-weight: 700;
+            color: #2563eb;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+            padding-bottom: 4px;
+            border-bottom: 1px solid #2563eb;
+            display: inline-block;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 5px;
+          }
+          th {
+            background: #2563eb;
+            color: white;
+            padding: 8px 10px;
+            text-align: left;
+            font-size: 10px;
+            text-transform: uppercase;
+          }
+          th:first-child { border-radius: 6px 0 0 0; }
+          th:last-child { border-radius: 0 6px 0 0; }
+          td { padding: 8px 10px; font-size: 11px; }
+          .total-box {
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-top: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+          }
+          .total-box .label { font-size: 14px; font-weight: 600; }
+          .total-box .amount { font-size: 24px; font-weight: 800; }
+          .footer {
+            background: #1a1a1a;
+            color: white;
+            padding: 15px 20px;
+            text-align: center;
+          }
+          .footer p { font-size: 10px; margin-bottom: 3px; }
+          .footer .tagline { color: #2563eb; font-weight: 600; font-size: 11px; margin-bottom: 5px; }
+          .no-print {
+            text-align: center;
             padding: 15px;
-            margin-top: 20px;
-            border-radius: 0 8px 8px 0;
+            background: #f5f5f5;
           }
+          .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            font-size: 12px;
+            font-weight: 600;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 0 5px;
+          }
+          .btn-primary { background: #2563eb; color: white; }
+          .btn-secondary { background: #e5e5e5; color: #333; }
           @media print {
-            body { padding: 20px; }
-            .no-print { display: none; }
+            body { background: white; padding: 0; }
+            .receipt-container { box-shadow: none; margin: 0; }
+            .no-print { display: none !important; }
           }
         </style>
       </head>
       <body>
-        <div class="header">
-          <div class="logo">🦷 Aquadent Lab</div>
-          <div class="subtitle">External Laboratory Services</div>
-        </div>
-
-        <div class="invoice-info">
-          <div>
-            <div class="label">Invoice Number</div>
-            <div class="value">${invoiceNumber}</div>
-            <div class="label" style="margin-top: 15px;">Date</div>
-            <div class="value">${receiptDate}</div>
+        <div class="receipt-container">
+          <div class="header">
+            <div class="header-content">
+              <div class="brand">
+                <div class="brand-icon">
+                  <img src="${logo}" alt="Aquadent" style="width: 100%; height: 100%; object-fit: contain; padding: 3px;" />
+                </div>
+                <div class="brand-text">
+                  <h1>Aquadent Dental Lab</h1>
+                  <p>External Laboratory Services</p>
+                </div>
+              </div>
+              <div class="receipt-badge">
+                <div class="label">Receipt</div>
+                <div class="number">${invoiceNumber}</div>
+              </div>
+            </div>
           </div>
-          <div style="text-align: right;">
-            <div class="label">Bill To</div>
-            <div class="value">${order.doctor_name}</div>
-            <div class="value">${order.institution}</div>
-            <div class="label" style="margin-top: 15px;">Expected Delivery</div>
-            <div class="value">${order.expected_date || "To be confirmed"}</div>
+
+          <div class="content">
+            <div class="info-grid">
+              <div class="info-card">
+                <h3>Client</h3>
+                <div class="name">${order.doctor_name}</div>
+                <div class="detail">${order.institution}</div>
+              </div>
+              <div class="info-card" style="text-align: right; border-left: none; border-right: 3px solid #2563eb;">
+                <h3>Details</h3>
+                <div class="name">${receiptDate}</div>
+                <div class="detail">${order.shipping_method || "Courier"}</div>
+              </div>
+            </div>
+
+            ${(order.items || []).length > 0 ? `
+              <div class="section">
+                <div class="section-title">Order Items</div>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Product</th>
+                      <th>Material</th>
+                      <th style="text-align: center;">Qty</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${itemsHtml}
+                  </tbody>
+                </table>
+              </div>
+            ` : ""}
+
+            ${order.lab_procedures ? `
+              <div class="section">
+                <div class="section-title">Lab Procedures</div>
+                <div style="background: #f0f7ff; padding: 10px; border-radius: 6px; border: 1px solid #bfdbfe;">
+                  ${order.lab_procedures}
+                </div>
+              </div>
+            ` : ""}
+
+            <div class="total-box">
+              <span class="label">Total Amount</span>
+              <span class="amount">Ksh ${totalAmount.toLocaleString()}</span>
+            </div>
           </div>
-        </div>
 
-        ${(order.items || []).length > 0 ? `
-          <div class="section-title">Order Items</div>
-          <table>
-            <thead>
-              <tr>
-                <th>Product</th>
-                <th>Material</th>
-                <th style="text-align: center;">Qty</th>
-                <th>Specifications</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${itemsHtml}
-            </tbody>
-          </table>
-        ` : ""}
-
-        ${order.lab_procedures ? `
-          <div class="section-title">Lab Procedures</div>
-          <div class="procedures">${order.lab_procedures}</div>
-        ` : ""}
-
-        ${order.notes ? `
-          <div class="notes">
-            <strong>Notes:</strong> ${order.notes}
+          <div class="footer">
+            <p class="tagline">Thank you for choosing Aquadent Dental Lab!</p>
+            <p>info@aquadent.co.ke • +254 700 000 000 • Eldoret, Kenya</p>
           </div>
-        ` : ""}
 
-        <div class="total-section">
-          <div class="total-row">
-            <span>Subtotal</span>
-            <span>Ksh ${(order.quote?.subtotal ?? order.lab_cost ?? 0).toLocaleString()}</span>
+          <div class="no-print">
+            <button class="btn btn-primary" onclick="window.print()">🖨️ Print Receipt</button>
+            <button class="btn btn-secondary" onclick="window.close()">Close</button>
           </div>
-          <div class="total-row">
-            <span>Tax</span>
-            <span>Ksh ${(order.quote?.tax ?? 0).toLocaleString()}</span>
-          </div>
-          <div class="total-row grand">
-            <span>Total Amount</span>
-            <span>Ksh ${(order.quote?.total ?? order.lab_cost ?? 0).toLocaleString()}</span>
-          </div>
-        </div>
-
-        <div class="footer">
-          <p>Thank you for choosing Aquadent Lab!</p>
-          <p style="margin-top: 5px;">For inquiries, contact us at info@aquadentlab.com</p>
-          <p style="margin-top: 10px; color: #999;">Shipping Method: ${order.shipping_method || "Courier"} | Status: ${order.status}</p>
-        </div>
-
-        <div class="no-print" style="text-align: center; margin-top: 30px;">
-          <button onclick="window.print()" style="
-            background: #2563eb;
-            color: white;
-            border: none;
-            padding: 12px 30px;
-            font-size: 16px;
-            border-radius: 8px;
-            cursor: pointer;
-            margin-right: 10px;
-          ">🖨️ Print Receipt</button>
-          <button onclick="window.close()" style="
-            background: #6b7280;
-            color: white;
-            border: none;
-            padding: 12px 30px;
-            font-size: 16px;
-            border-radius: 8px;
-            cursor: pointer;
-          ">Close</button>
         </div>
       </body>
       </html>
@@ -691,14 +964,24 @@ export default function ExternalLabWorks() {
                         {order.created_at ? new Date(order.created_at).toLocaleDateString() : "-"}
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <button
-                          type="button"
-                          onClick={() => printReceipt(order)}
-                          className="px-3 py-1.5 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
-                          title="Print Receipt"
-                        >
-                          🖨️ Print
-                        </button>
+                        <div className="flex gap-1 justify-center">
+                          <button
+                            type="button"
+                            onClick={() => printReceipt(order)}
+                            className="px-2 py-1 text-xs bg-green-600 hover:bg-green-700 text-white rounded transition-colors"
+                            title="Print Receipt"
+                          >
+                            🧾 Receipt
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => printInvoice(order)}
+                            className="px-2 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
+                            title="Print Invoice"
+                          >
+                            📄 Invoice
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}

@@ -347,6 +347,8 @@ function Sales() {
     const totalRevenue = filteredSales.reduce((sum, s) => sum + s.total_price, 0);
     const totalTransactions = filteredSales.length;
     const totalItemsSold = filteredSales.reduce((sum, s) => sum + s.quantity, 0);
+    const cashRevenue = filteredSales.filter(s => s.payment_status === 'paid').reduce((sum, s) => sum + s.total_price, 0);
+    const invoiceRevenue = filteredSales.filter(s => s.payment_status === 'pending').reduce((sum, s) => sum + s.total_price, 0);
 
     // Filter label for display
     const getFilterLabel = () => {
@@ -403,38 +405,60 @@ function Sales() {
             </Card>
 
             {/* Colorful KPI Cards */}
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-3">
-                <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl p-4 text-white shadow-lg">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+                <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-lg p-2.5 text-white shadow-md">
                     <div className="flex items-center justify-between">
                         <div>
-                            <div className="text-sm opacity-90">Revenue</div>
-                            <div className="text-2xl font-bold mt-1">Ksh {totalRevenue.toLocaleString()}</div>
+                            <div className="text-xs opacity-90">Total Revenue</div>
+                            <div className="text-lg font-bold">Ksh {totalRevenue.toLocaleString()}</div>
                         </div>
-                        <div className="text-3xl opacity-80">💰</div>
+                        <div className="text-xl opacity-80">💰</div>
                     </div>
-                    <div className="mt-2 text-xs opacity-75">{getFilterLabel()} revenue</div>
+                    <div className="mt-1 text-[10px] opacity-75">{getFilterLabel()}</div>
                 </div>
 
-                <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-4 text-white shadow-lg">
+                <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg p-2.5 text-white shadow-md">
                     <div className="flex items-center justify-between">
                         <div>
-                            <div className="text-sm opacity-90">Transactions</div>
-                            <div className="text-2xl font-bold mt-1">{totalTransactions.toLocaleString()}</div>
+                            <div className="text-xs opacity-90">Cash Revenue</div>
+                            <div className="text-lg font-bold">Ksh {cashRevenue.toLocaleString()}</div>
                         </div>
-                        <div className="text-3xl opacity-80">🧾</div>
+                        <div className="text-xl opacity-80">💵</div>
                     </div>
-                    <div className="mt-2 text-xs opacity-75">Completed sales</div>
+                    <div className="mt-1 text-[10px] opacity-75">Paid sales</div>
                 </div>
 
-                <div className="bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl p-4 text-white shadow-lg">
+                <div className="bg-gradient-to-br from-pink-500 to-pink-600 rounded-lg p-2.5 text-white shadow-md">
                     <div className="flex items-center justify-between">
                         <div>
-                            <div className="text-sm opacity-90">Items Sold</div>
-                            <div className="text-2xl font-bold mt-1">{totalItemsSold.toLocaleString()}</div>
+                            <div className="text-xs opacity-90">Invoice Revenue</div>
+                            <div className="text-lg font-bold">Ksh {invoiceRevenue.toLocaleString()}</div>
                         </div>
-                        <div className="text-3xl opacity-80">📦</div>
+                        <div className="text-xl opacity-80">📄</div>
                     </div>
-                    <div className="mt-2 text-xs opacity-75">Total quantity sold</div>
+                    <div className="mt-1 text-[10px] opacity-75">Pending invoices</div>
+                </div>
+
+                <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg p-2.5 text-white shadow-md">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <div className="text-xs opacity-90">Transactions</div>
+                            <div className="text-lg font-bold">{totalTransactions.toLocaleString()}</div>
+                        </div>
+                        <div className="text-xl opacity-80">🧾</div>
+                    </div>
+                    <div className="mt-1 text-[10px] opacity-75">Sales count</div>
+                </div>
+
+                <div className="bg-gradient-to-br from-amber-500 to-amber-600 rounded-lg p-2.5 text-white shadow-md">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <div className="text-xs opacity-90">Items Sold</div>
+                            <div className="text-lg font-bold">{totalItemsSold.toLocaleString()}</div>
+                        </div>
+                        <div className="text-xl opacity-80">📦</div>
+                    </div>
+                    <div className="mt-1 text-[10px] opacity-75">Total quantity</div>
                 </div>
             </div>
 

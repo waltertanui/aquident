@@ -186,49 +186,71 @@ function FrontOffice() {
         </div>
       </div>
       {/* Colorful KPI Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="bg-gradient-to-br from-teal-500 to-teal-600 rounded-xl p-4 text-white shadow-lg">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="bg-gradient-to-br from-teal-500 to-teal-600 rounded-lg p-2.5 text-white shadow-md">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-sm opacity-90">Total Walk-ins</div>
-              <div className="text-2xl font-bold mt-1">{formatCurrency(filteredByTime.length)}</div>
+              <div className="text-xs opacity-90">Total Walk-ins</div>
+              <div className="text-lg font-bold">{formatCurrency(filteredByTime.length)}</div>
             </div>
-            <div className="text-3xl opacity-80">🚶</div>
+            <div className="text-xl opacity-80">🚶</div>
           </div>
-          <div className="mt-2 text-xs opacity-75">All registered patients</div>
+          <div className="mt-1 text-[10px] opacity-75">All registered</div>
         </div>
 
-        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-4 text-white shadow-lg">
+        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg p-2.5 text-white shadow-md">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-sm opacity-90">Active Patients</div>
-              <div className="text-2xl font-bold mt-1">{formatCurrency(filteredByTime.filter(p => p.status === 'active').length)}</div>
+              <div className="text-xs opacity-90">Active</div>
+              <div className="text-lg font-bold">{formatCurrency(filteredByTime.filter(p => p.status === 'active').length)}</div>
             </div>
-            <div className="text-3xl opacity-80">⏳</div>
+            <div className="text-xl opacity-80">⏳</div>
           </div>
-          <div className="mt-2 text-xs opacity-75">Currently in treatment</div>
+          <div className="mt-1 text-[10px] opacity-75">In treatment</div>
         </div>
 
-        <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl p-4 text-white shadow-lg">
+        <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-lg p-2.5 text-white shadow-md">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-sm opacity-90">Completed</div>
-              <div className="text-2xl font-bold mt-1">{formatCurrency(filteredByTime.filter(p => p.status === 'completed').length)}</div>
+              <div className="text-xs opacity-90">Completed</div>
+              <div className="text-lg font-bold">{formatCurrency(filteredByTime.filter(p => p.status === 'completed').length)}</div>
             </div>
-            <div className="text-3xl opacity-80">✅</div>
+            <div className="text-xl opacity-80">✅</div>
           </div>
-          <div className="mt-2 text-xs opacity-75">Finished treatments</div>
+          <div className="mt-1 text-[10px] opacity-75">Finished</div>
         </div>
 
-        <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-4 text-white shadow-lg">
+        <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg p-2.5 text-white shadow-md">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-sm opacity-90">Total Revenue</div>
-              <div className="text-2xl font-bold mt-1">Ksh {formatCurrency(filteredByTime.reduce((sum, p) => sum + (p.insurance_amount || 0) + (p.cash_amount || 0), 0))}</div>
+              <div className="text-xs opacity-90">Total Revenue</div>
+              <div className="text-lg font-bold">Ksh {formatCurrency(filteredByTime.reduce((sum, p) => sum + (p.insurance_amount || 0) + (p.cash_amount || 0), 0))}</div>
             </div>
-            <div className="text-3xl opacity-80">💰</div>
+            <div className="text-xl opacity-80">💰</div>
           </div>
-          <div className="mt-2 text-xs opacity-75">Insurance + Cash</div>
+          <div className="mt-1 text-[10px] opacity-75">Insurance + Cash</div>
+        </div>
+
+        <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg p-2.5 text-white shadow-md">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-xs opacity-90">Cash Revenue</div>
+              <div className="text-lg font-bold">Ksh {formatCurrency(filteredByTime.reduce((sum, p) => sum + (p.cash_amount || 0), 0))}</div>
+            </div>
+            <div className="text-xl opacity-80">💵</div>
+          </div>
+          <div className="mt-1 text-[10px] opacity-75">Cash only</div>
+        </div>
+
+        <div className="bg-gradient-to-br from-pink-500 to-pink-600 rounded-lg p-2.5 text-white shadow-md">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-xs opacity-90">Insurance</div>
+              <div className="text-lg font-bold">Ksh {formatCurrency(filteredByTime.reduce((sum, p) => sum + (p.insurance_amount || 0), 0))}</div>
+            </div>
+            <div className="text-xl opacity-80">🏥</div>
+          </div>
+          <div className="mt-1 text-[10px] opacity-75">Claims only</div>
         </div>
       </div>
 

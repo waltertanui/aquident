@@ -119,16 +119,21 @@ export default function Optical() {
   const stats = useMemo(() => {
     let totalExpected = 0;
     let totalPaid = 0;
+    let cashRevenue = 0;
+    let insuranceRevenue = 0;
 
     patients.forEach((p) => {
       const total = (p.frame_price || 0) + (p.lens_price || 0);
+      const instTotal = (p.installments || []).reduce((sum, inst) => sum + (inst.amount || 0), 0);
       const paid =
         (p.insurance_amount || 0) +
         (p.cash_amount || 0) +
-        (p.installments || []).reduce((sum, inst) => sum + (inst.amount || 0), 0);
+        instTotal;
 
       totalExpected += total;
       totalPaid += paid;
+      cashRevenue += (p.cash_amount || 0) + instTotal;
+      insuranceRevenue += (p.insurance_amount || 0);
     });
 
     return {
@@ -136,6 +141,8 @@ export default function Optical() {
       revenue: totalExpected,
       paid: totalPaid,
       balance: totalExpected - totalPaid,
+      cashRevenue,
+      insuranceRevenue,
     };
   }, [patients]);
 
@@ -400,6 +407,114 @@ td{padding:10px 8px;border-bottom:1px solid #eee}
   };
 
   // ────────────────────────────────────────────────
+  // PRINT RECEIPT (Quick/Modern Style)
+  // ────────────────────────────────────────────────
+
+  const printReceipt = (patient: OpticalPatient) => {
+    const w = window.open("", "_blank");
+    if (!w) {
+      alert("Please allow pop-ups");
+      return;
+    }
+
+    const receiptNo = `RCP-${patient.id.slice(0, 8).toUpperCase()}`;
+    const date = new Date().toLocaleDateString("en-KE", { year: "numeric", month: "long", day: "numeric" });
+    const total = (patient.frame_price || 0) + (patient.lens_price || 0);
+    const instTotal = calculateInstallmentsTotal(patient.installments || []);
+    const totalPaid = (patient.insurance_amount || 0) + (patient.cash_amount || 0) + instTotal;
+    const balance = total - totalPaid;
+
+    const html = `<!DOCTYPE html><html><head><title>Receipt ${receiptNo}</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',sans-serif;padding:0;margin:0;background:#f5f5f5;color:#1a1a1a;font-size:11px}
+.container{max-width:500px;margin:10px auto;background:white;box-shadow:0 4px 20px rgba(0,0,0,0.1)}
+.header{background:linear-gradient(135deg,#16a34a,#15803d);color:white;padding:15px 20px}
+.header-content{display:flex;justify-content:space-between;align-items:center}
+.brand h1{font-size:16px;font-weight:700}
+.brand p{font-size:10px;opacity:0.9}
+.badge{background:rgba(255,255,255,0.2);padding:6px 12px;border-radius:6px;text-align:right}
+.badge .label{font-size:9px;text-transform:uppercase;opacity:0.8}
+.badge .number{font-size:12px;font-weight:700}
+.content{padding:20px}
+.info-row{display:flex;justify-content:space-between;gap:15px;margin-bottom:15px;padding-bottom:15px;border-bottom:1px solid #eee}
+.info-card{flex:1;background:#fafafa;padding:10px;border-radius:6px;border-left:3px solid #16a34a}
+.info-card h3{font-size:9px;text-transform:uppercase;color:#888;margin-bottom:5px}
+.info-card .name{font-size:13px;font-weight:700}
+.info-card .detail{font-size:11px;color:#666}
+.section{margin-bottom:15px}
+.section-title{font-size:10px;font-weight:700;color:#16a34a;text-transform:uppercase;margin-bottom:8px;border-bottom:1px solid #16a34a;display:inline-block;padding-bottom:4px}
+.cost-card{background:#fafafa;border-radius:6px;border:1px solid #eee;overflow:hidden}
+.cost-row{display:flex;justify-content:space-between;padding:8px 12px;border-bottom:1px solid #eee}
+.cost-row:last-child{border-bottom:none}
+.cost-row.highlight{background:#16a34a;color:white;font-weight:700}
+.balance-box{margin-top:15px;padding:15px;text-align:center;border-radius:8px;
+  background:${balance > 0 ? '#fef2f2' : '#f0fdf4'};
+  border:2px solid ${balance > 0 ? '#ef4444' : '#22c55e'}}
+.balance-label{font-size:10px;font-weight:700;color:${balance > 0 ? '#dc2626' : '#16a34a'}}
+.balance-amount{font-size:24px;font-weight:800;color:${balance > 0 ? '#dc2626' : '#16a34a'}}
+.footer{background:#1a1a1a;color:white;padding:15px;text-align:center;font-size:10px}
+.footer .tagline{color:#16a34a;font-weight:600;font-size:11px;margin-bottom:5px}
+.no-print{padding:15px;text-align:center;background:#f5f5f5}
+.btn{padding:10px 20px;margin:0 5px;border:none;border-radius:6px;cursor:pointer;font-weight:600}
+.btn-primary{background:#16a34a;color:white}
+.btn-secondary{background:#e5e5e5;color:#333}
+@media print{body{background:white}.container{box-shadow:none;margin:0}.no-print{display:none!important}}
+</style></head><body>
+<div class="container">
+  <div class="header">
+    <div class="header-content">
+      <div class="brand"><h1>👓 Aquadent Optical</h1><p>Eye Care Services</p></div>
+      <div class="badge"><div class="label">Receipt</div><div class="number">${receiptNo}</div></div>
+    </div>
+  </div>
+  <div class="content">
+    <div class="info-row">
+      <div class="info-card"><h3>Patient</h3><div class="name">${patient.name}</div><div class="detail">${patient.contacts || ''}</div></div>
+      <div class="info-card" style="text-align:right;border-left:none;border-right:3px solid #16a34a"><h3>Date</h3><div class="name">${date}</div><div class="detail">${patient.status}</div></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Order Summary</div>
+      <div class="cost-card">
+        <div class="cost-row"><span>Frame: ${patient.frame_brand || ''} ${patient.frame_model || ''}</span><span>Ksh ${(patient.frame_price || 0).toLocaleString()}</span></div>
+        <div class="cost-row"><span>Lens: ${patient.lens_type || ''}</span><span>Ksh ${(patient.lens_price || 0).toLocaleString()}</span></div>
+        <div class="cost-row highlight"><span>TOTAL</span><span>Ksh ${total.toLocaleString()}</span></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Payments</div>
+      <div class="cost-card">
+        ${patient.insurance_amount ? `<div class="cost-row"><span>Insurance</span><span>Ksh ${patient.insurance_amount.toLocaleString()}</span></div>` : ''}
+        ${patient.cash_amount ? `<div class="cost-row"><span>Cash</span><span>Ksh ${patient.cash_amount.toLocaleString()}</span></div>` : ''}
+        ${instTotal > 0 ? `<div class="cost-row"><span>Installments (${(patient.installments || []).length})</span><span>Ksh ${instTotal.toLocaleString()}</span></div>` : ''}
+        <div class="cost-row highlight"><span>TOTAL PAID</span><span>Ksh ${totalPaid.toLocaleString()}</span></div>
+      </div>
+    </div>
+
+    <div class="balance-box">
+      <div class="balance-label">${balance > 0 ? 'BALANCE DUE' : balance < 0 ? 'OVERPAYMENT' : '✓ PAID IN FULL'}</div>
+      <div class="balance-amount">Ksh ${Math.abs(balance).toLocaleString()}</div>
+    </div>
+  </div>
+  <div class="footer">
+    <p class="tagline">Thank you for choosing Aquadent Optical!</p>
+    <p>info@aquadent.co.ke • +254 700 000 000 • Eldoret, Kenya</p>
+  </div>
+  <div class="no-print">
+    <button class="btn btn-primary" onclick="window.print()">🖨️ Print Receipt</button>
+    <button class="btn btn-secondary" onclick="window.close()">Close</button>
+  </div>
+</div>
+</body></html>`;
+
+    w.document.write(html);
+    w.document.close();
+  };
+
+  // ────────────────────────────────────────────────
   // RENDER
   // ────────────────────────────────────────────────
 
@@ -408,49 +523,71 @@ td{padding:10px 8px;border-bottom:1px solid #eee}
       <PageHeader title="Optical" action={{ label: "New Patient", onClick: () => setShowForm(true) }} />
 
       {/* Colorful KPI Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl p-4 text-white shadow-lg">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-lg p-2.5 text-white shadow-md">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-sm opacity-90">Total Revenue</div>
-              <div className="text-2xl font-bold mt-1">Ksh {stats.revenue.toLocaleString()}</div>
+              <div className="text-xs opacity-90">Total Revenue</div>
+              <div className="text-lg font-bold">Ksh {stats.revenue.toLocaleString()}</div>
             </div>
-            <div className="text-3xl opacity-80">💰</div>
+            <div className="text-xl opacity-80">💰</div>
           </div>
-          <div className="mt-2 text-xs opacity-75">Expected from all orders</div>
+          <div className="mt-1 text-[10px] opacity-75">Expected</div>
         </div>
 
-        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-4 text-white shadow-lg">
+        <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg p-2.5 text-white shadow-md">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-sm opacity-90">Paid Amount</div>
-              <div className="text-2xl font-bold mt-1">Ksh {stats.paid.toLocaleString()}</div>
+              <div className="text-xs opacity-90">Cash Revenue</div>
+              <div className="text-lg font-bold">Ksh {stats.cashRevenue.toLocaleString()}</div>
             </div>
-            <div className="text-3xl opacity-80">✅</div>
+            <div className="text-xl opacity-80">💵</div>
           </div>
-          <div className="mt-2 text-xs opacity-75">Total collected</div>
+          <div className="mt-1 text-[10px] opacity-75">Cash + Installments</div>
         </div>
 
-        <div className="bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl p-4 text-white shadow-lg">
+        <div className="bg-gradient-to-br from-pink-500 to-pink-600 rounded-lg p-2.5 text-white shadow-md">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-sm opacity-90">Balance Due</div>
-              <div className="text-2xl font-bold mt-1">Ksh {stats.balance.toLocaleString()}</div>
+              <div className="text-xs opacity-90">Insurance</div>
+              <div className="text-lg font-bold">Ksh {stats.insuranceRevenue.toLocaleString()}</div>
             </div>
-            <div className="text-3xl opacity-80">⏳</div>
+            <div className="text-xl opacity-80">🏥</div>
           </div>
-          <div className="mt-2 text-xs opacity-75">Pending payments</div>
+          <div className="mt-1 text-[10px] opacity-75">Insurance claims</div>
         </div>
 
-        <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-4 text-white shadow-lg">
+        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg p-2.5 text-white shadow-md">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-sm opacity-90">Total Orders</div>
-              <div className="text-2xl font-bold mt-1">{stats.totalOrders}</div>
+              <div className="text-xs opacity-90">Paid Amount</div>
+              <div className="text-lg font-bold">Ksh {stats.paid.toLocaleString()}</div>
             </div>
-            <div className="text-3xl opacity-80">👓</div>
+            <div className="text-xl opacity-80">✅</div>
           </div>
-          <div className="mt-2 text-xs opacity-75">Optical patients</div>
+          <div className="mt-1 text-[10px] opacity-75">Total collected</div>
+        </div>
+
+        <div className="bg-gradient-to-br from-amber-500 to-amber-600 rounded-lg p-2.5 text-white shadow-md">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-xs opacity-90">Balance Due</div>
+              <div className="text-lg font-bold">Ksh {stats.balance.toLocaleString()}</div>
+            </div>
+            <div className="text-xl opacity-80">⏳</div>
+          </div>
+          <div className="mt-1 text-[10px] opacity-75">Pending</div>
+        </div>
+
+        <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg p-2.5 text-white shadow-md">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-xs opacity-90">Total Orders</div>
+              <div className="text-lg font-bold">{stats.totalOrders}</div>
+            </div>
+            <div className="text-xl opacity-80">👓</div>
+          </div>
+          <div className="mt-1 text-[10px] opacity-75">Patients</div>
         </div>
       </div>
 
@@ -524,13 +661,18 @@ td{padding:10px 8px;border-bottom:1px solid #eee}
                         </select>
                       </td>
                       <td className="p-3">
-                        <div className="flex gap-2">
-                          <button onClick={() => handleEditClick(p)} className="px-3 py-1.5 bg-blue-600 text-white text-xs rounded hover:bg-blue-700">
+                        <div className="flex gap-1">
+                          <button onClick={() => handleEditClick(p)} className="px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700">
                             {p.price_locked ? 'View' : 'Pay'}
                           </button>
-                          <button onClick={() => printInvoice(p)} className="px-3 py-1.5 bg-gray-600 text-white text-xs rounded hover:bg-gray-700" title="Print Invoice">
-                            🖨️
+                          <button onClick={() => printReceipt(p)} className="px-2 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700" title="Print Receipt">
+                            🧾
                           </button>
+                          {(p.insurance_amount || 0) > 0 && (
+                            <button onClick={() => printInvoice(p)} className="px-2 py-1 bg-gray-600 text-white text-xs rounded hover:bg-gray-700" title="Print Invoice">
+                              📄
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
