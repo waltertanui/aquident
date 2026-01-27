@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import PageHeader from "../../components/PageHeader";
 import Card from "../../ui/Card";
-import { listSales, createSale, listSalesInventory } from "../../middleware/data";
+import { listSales, createSale, listSalesInventory, updateSale } from "../../middleware/data";
 import logo from "../../assets/aquadent_logo.png";
 // blank line or simply remove the line
 
@@ -309,7 +309,7 @@ function Sales() {
     };
 
     const formatCurrency = (n: number) =>
-        n.toLocaleString(undefined, { style: "currency", currency: "USD" });
+        `Ksh ${n.toLocaleString()}`;
 
     const formattedToday = new Date().toISOString().split("T")[0];
     const [filterType, setFilterType] = useState<"all" | "daily" | "weekly" | "monthly">("daily");
@@ -564,7 +564,7 @@ function Sales() {
                                 <th className="text-right p-4 font-medium">Qty</th>
                                 <th className="text-right p-4 font-medium">Unit Price</th>
                                 <th className="text-right p-4 font-medium">Total</th>
-                                <th className="text-center p-4 font-medium">Status</th>
+                                <th className="text-center p-4 font-medium">Invoice Status</th>
                                 <th className="text-right p-4 font-medium">Actions</th>
                             </tr>
                         </thead>
@@ -589,9 +589,32 @@ function Sales() {
                                         <td className="p-4 text-right text-gray-600">{formatCurrency(sale.unit_price)}</td>
                                         <td className="p-4 text-right text-teal-600 font-semibold">{formatCurrency(sale.total_price)}</td>
                                         <td className="p-4 text-center">
-                                            <span className={`px-2 py-1 text-xs rounded-full ${sale.payment_status === 'paid' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                                {sale.payment_status === 'paid' ? 'Paid' : 'Pending'}
-                                            </span>
+                                            {sale.payment_status === 'pending' ? (
+                                                <select
+                                                    value={sale.invoice_status || 'not_yet_paid'}
+                                                    onChange={async (e) => {
+                                                        const newStatus = e.target.value as 'not_yet_paid' | 'paid' | 'paid_less' | 'disputed';
+                                                        const success = await updateSale(sale.id, { invoice_status: newStatus });
+                                                        if (success) {
+                                                            queryClient.invalidateQueries({ queryKey: ['sales'] });
+                                                        }
+                                                    }}
+                                                    className={`px-2 py-1 text-xs rounded border cursor-pointer focus:outline-none focus:ring-2 focus:ring-teal-500 ${sale.invoice_status === 'paid' ? 'bg-green-100 text-green-800 border-green-300' :
+                                                            sale.invoice_status === 'paid_less' ? 'bg-yellow-100 text-yellow-800 border-yellow-300' :
+                                                                sale.invoice_status === 'disputed' ? 'bg-red-100 text-red-800 border-red-300' :
+                                                                    'bg-orange-100 text-orange-800 border-orange-300'
+                                                        }`}
+                                                >
+                                                    <option value="not_yet_paid">Not Yet Paid</option>
+                                                    <option value="paid">Paid</option>
+                                                    <option value="paid_less">Paid Less</option>
+                                                    <option value="disputed">Disputed</option>
+                                                </select>
+                                            ) : (
+                                                <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">
+                                                    Paid
+                                                </span>
+                                            )}
                                         </td>
                                         <td className="p-4 text-right">
                                             <button

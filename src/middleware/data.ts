@@ -916,6 +916,8 @@ export interface SalesInventoryItem {
   initial_qty: number;
   price: number;
   status: "In Stock" | "Low" | "Out";
+  delivery_date?: string;
+  delivery_note_url?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -928,7 +930,8 @@ export interface Sale {
   unit_price: number;
   total_price: number;
   sale_date: string;
-  payment_status: "paid" | "pending";
+  payment_status: "paid" | "pending" | "paid_less" | "disputed";
+  invoice_status?: "not_yet_paid" | "paid" | "paid_less" | "disputed";
   notes?: string;
   created_at?: string;
   // Join data
@@ -958,6 +961,8 @@ export async function listSalesInventory(): Promise<SalesInventoryItem[]> {
     initial_qty: row.initial_qty ?? row.qty, // Fallback if null
     price: row.price,
     status: row.status,
+    delivery_date: row.delivery_date ?? undefined,
+    delivery_note_url: row.delivery_note_url ?? undefined,
     created_at: row.created_at,
     updated_at: row.updated_at,
   }));
@@ -1032,10 +1037,25 @@ export async function listSales(): Promise<Sale[]> {
     total_price: row.total_price,
     sale_date: row.sale_date,
     payment_status: row.payment_status ?? "paid",
+    invoice_status: row.invoice_status ?? undefined,
     notes: row.notes ?? undefined,
     created_at: row.created_at,
     item_name: row.sales_inventory?.name,
   }));
+}
+
+export async function updateSale(id: string, updates: Partial<Sale>): Promise<boolean> {
+  const sb = getSupabaseClient();
+  const { error } = await sb
+    .from(SALES_TABLE)
+    .update(updates)
+    .eq("id", id);
+
+  if (error) {
+    console.error("updateSale error:", error);
+    return false;
+  }
+  return true;
 }
 
 export async function createSale(sale: Omit<Sale, "id" | "created_at" | "item_name">): Promise<Sale | null> {

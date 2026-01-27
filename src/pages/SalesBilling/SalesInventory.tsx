@@ -23,25 +23,76 @@ function SalesInventory() {
         sku: "",
         qty: 0,
         price: 0,
+        delivery_date: new Date().toISOString().split("T")[0],
+        delivery_note_url: "",
     });
 
     const handleAddItem = async () => {
-        if (!newItem.name || !newItem.sku) return;
+        if (!newItem.name || !newItem.sku) {
+            alert("Name and SKU are required");
+            return;
+        }
 
-        let status: SalesInventoryItem["status"] = "In Stock";
-        if (newItem.qty === 0) status = "Out";
-        else if (newItem.qty < 10) status = "Low";
+        try {
+            let status: SalesInventoryItem["status"] = "In Stock";
+            if (newItem.qty === 0) status = "Out";
+            else if (newItem.qty < 10) status = "Low";
 
-        const result = await createSalesInventoryItem({
-            ...newItem,
-            initial_qty: newItem.qty,
-            status,
-        });
+            console.log("Creating item:", {
+                name: newItem.name,
+                sku: newItem.sku,
+                qty: newItem.qty,
+                initial_qty: newItem.qty,
+                price: newItem.price,
+                status,
+                delivery_date: newItem.delivery_date || undefined,
+                delivery_note_url: newItem.delivery_note_url || undefined,
+            });
 
-        if (result) {
-            queryClient.invalidateQueries({ queryKey: ['salesInventory'] });
-            setShowAdd(false);
-            setNewItem({ name: "", sku: "", qty: 0, price: 0 });
+            const result = await createSalesInventoryItem({
+                name: newItem.name,
+                sku: newItem.sku,
+                qty: newItem.qty,
+                initial_qty: newItem.qty,
+                price: newItem.price,
+                status,
+                delivery_date: newItem.delivery_date || undefined,
+                delivery_note_url: newItem.delivery_note_url || undefined,
+            });
+
+            console.log("Result:", result);
+
+            if (result) {
+                queryClient.invalidateQueries({ queryKey: ['salesInventory'] });
+                setShowAdd(false);
+                setNewItem({
+                    name: "",
+                    sku: "",
+                    qty: 0,
+                    price: 0,
+                    delivery_date: new Date().toISOString().split("T")[0],
+                    delivery_note_url: "",
+                });
+            } else {
+                alert("Failed to save item. Check browser console for details.");
+            }
+        } catch (err) {
+            console.error("handleAddItem error:", err);
+            alert("Error saving item: " + (err instanceof Error ? err.message : String(err)));
+        }
+    };
+
+    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setNewItem((prev) => ({
+                    ...prev,
+                    delivery_note_url: reader.result as string,
+                }));
+            };
+            reader.readAsDataURL(file);
         }
     };
 
@@ -55,7 +106,7 @@ function SalesInventory() {
     };
 
     const formatCurrency = (n: number) =>
-        n.toLocaleString("en-KE", { style: "currency", currency: "KES" });
+        `Ksh ${n.toLocaleString()}`;
 
     return (
         <div className="p-6 space-y-6">
@@ -105,6 +156,29 @@ function SalesInventory() {
                                     onChange={e => setNewItem(v => ({ ...v, price: Number(e.target.value) }))}
                                 />
                             </div>
+                            <div>
+                                <label className="block text-xs text-gray-600 mb-1">Delivery Date</label>
+                                <input
+                                    type="date"
+                                    className="w-full bg-white border border-gray-300 rounded px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                                    value={newItem.delivery_date}
+                                    onChange={e => setNewItem(v => ({ ...v, delivery_date: e.target.value }))}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs text-gray-600 mb-1">Delivery Note</label>
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={handleFileUpload}
+                                        className="text-xs text-gray-500 file:mr-2 file:py-2 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100"
+                                    />
+                                    {newItem.delivery_note_url && (
+                                        <span className="text-green-600 text-xs">✓ Ready</span>
+                                    )}
+                                </div>
+                            </div>
                         </div>
                         <div className="flex gap-2">
                             <button
@@ -135,6 +209,8 @@ function SalesInventory() {
                                 <th className="text-right p-4 font-medium">Qty</th>
                                 <th className="text-right p-4 font-medium">Price</th>
                                 <th className="text-center p-4 font-medium">Status</th>
+                                <th className="text-center p-4 font-medium">Delivery Date</th>
+                                <th className="text-center p-4 font-medium">Delivery Note</th>
                                 <th className="text-right p-4 font-medium">Actions</th>
                             </tr>
                         </thead>
@@ -162,6 +238,23 @@ function SalesInventory() {
                                                         'bg-red-100 text-red-800'}`}>
                                                 {item.status}
                                             </span>
+                                        </td>
+                                        <td className="p-4 text-center text-gray-500">
+                                            {item.delivery_date ? new Date(item.delivery_date).toLocaleDateString() : "-"}
+                                        </td>
+                                        <td className="p-4 text-center">
+                                            {item.delivery_note_url ? (
+                                                <a
+                                                    href={item.delivery_note_url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-blue-600 hover:underline text-xs"
+                                                >
+                                                    🖼️ View Note
+                                                </a>
+                                            ) : (
+                                                <span className="text-gray-400">-</span>
+                                            )}
                                         </td>
                                         <td className="p-4 text-right">
                                             <button
