@@ -38,6 +38,8 @@ function Inventory() {
     sku: "",
     initial_qty: 0,
     qty: 0,
+    delivery_date: new Date().toISOString().split("T")[0],
+    delivery_note_url: "",
   });
 
   const filteredItems = useMemo(() => {
@@ -63,12 +65,35 @@ function Inventory() {
       sku: newItem.sku,
       initial_qty: newItem.initial_qty,
       qty: newItem.qty,
+      delivery_date: newItem.delivery_date || undefined,
+      delivery_note_url: newItem.delivery_note_url || undefined,
     });
     if (created) {
-      queryClient.invalidateQueries({ queryKey: ['internalInventory'] });
+      queryClient.invalidateQueries({ queryKey: ["internalInventory"] });
     }
     setShowAdd(false);
-    setNewItem({ name: "", sku: "", initial_qty: 0, qty: 0 });
+    setNewItem({
+      name: "",
+      sku: "",
+      initial_qty: 0,
+      qty: 0,
+      delivery_date: new Date().toISOString().split("T")[0],
+      delivery_note_url: "",
+    });
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setNewItem((prev) => ({
+          ...prev,
+          delivery_note_url: reader.result as string,
+        }));
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const deleteItem = async (id: number) => {
@@ -243,7 +268,30 @@ function Inventory() {
                   placeholder="Current Qty"
                   className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
-                <div className="flex gap-2">
+                <div className="space-y-1">
+                  <label className="text-[10px] text-gray-500 uppercase font-bold">Delivery Date</label>
+                  <input
+                    type="date"
+                    value={newItem.delivery_date}
+                    onChange={(e) => setNewItem((ni) => ({ ...ni, delivery_date: e.target.value }))}
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] text-gray-500 uppercase font-bold">Delivery Note</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileUpload}
+                      className="text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                    />
+                    {newItem.delivery_note_url && (
+                      <span className="text-green-600 text-xs">✓ Ready</span>
+                    )}
+                  </div>
+                </div>
+                <div className="flex gap-2 items-end">
                   <button
                     onClick={addItem}
                     className="rounded-md bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700"
@@ -270,6 +318,8 @@ function Inventory() {
                     <th className="py-2 px-3">Initial Qty</th>
                     <th className="py-2 px-3">Current Qty</th>
                     <th className="py-2 px-3">Status</th>
+                    <th className="py-2 px-3">Delivery Date</th>
+                    <th className="py-2 px-3">Delivery Note</th>
                     <th className="py-2 px-3">Actions</th>
                   </tr>
                 </thead>
@@ -288,6 +338,23 @@ function Inventory() {
                         <td className="py-2 px-3">{item.initial_qty}</td>
                         <td className="py-2 px-3">{item.qty}</td>
                         <td className="py-2 px-3">{getStatusBadge(item.status)}</td>
+                        <td className="py-2 px-3 text-gray-500">
+                          {item.delivery_date ? new Date(item.delivery_date).toLocaleDateString() : "-"}
+                        </td>
+                        <td className="py-2 px-3 text-gray-500">
+                          {item.delivery_note_url ? (
+                            <a
+                              href={item.delivery_note_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:underline flex items-center gap-1"
+                            >
+                              🖼️ View Note
+                            </a>
+                          ) : (
+                            "-"
+                          )}
+                        </td>
                         <td className="py-2 px-3">
                           <button
                             onClick={() => deleteItem(item.id)}

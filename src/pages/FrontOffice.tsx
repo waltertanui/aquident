@@ -73,6 +73,7 @@ function FrontOffice() {
   const dobRef = useRef<HTMLInputElement>(null);
   const resRef = useRef<HTMLInputElement>(null);
   const opRef = useRef<HTMLInputElement>(null);
+  const schemeRef = useRef<HTMLInputElement>(null);
   const genderRef = useRef<HTMLSelectElement>(null);
 
   const existingMatches = useMemo(() => {
@@ -97,6 +98,7 @@ function FrontOffice() {
     if (dobRef.current && p.dob) dobRef.current.value = p.dob;
     if (resRef.current) resRef.current.value = p.res;
     if (opRef.current) opRef.current.value = p.op;
+    if (schemeRef.current && p.scheme) schemeRef.current.value = p.scheme;
     if (genderRef.current) genderRef.current.value = p.g;
   }
 
@@ -123,6 +125,7 @@ function FrontOffice() {
         op: String(fd.get("op") || ""),
         dr: String(fd.get("dr") || ""),
         ins: fd.get("ins") ? String(fd.get("ins")) : undefined,
+        scheme: fd.get("scheme") ? String(fd.get("scheme")) : undefined, // Capture Scheme
         clinic_notes: String(fd.get("clinic_notes") || ""), // Capture notes
       };
       // ADD: read DOB from form (keep out of saveWalkin to avoid extra property checks)
@@ -380,6 +383,13 @@ function FrontOffice() {
               placeholder="Payment Type (Insurance)"
               className="border rounded-md px-3 py-2 w-full"
               required
+            />
+            {/* ADD: Scheme field */}
+            <input
+              ref={schemeRef}
+              name="scheme"
+              placeholder="Scheme"
+              className="border rounded-md px-3 py-2 w-full"
             />
             <div className="flex justify-end gap-2 pt-2">
               <button

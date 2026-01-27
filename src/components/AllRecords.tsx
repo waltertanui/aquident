@@ -111,6 +111,7 @@ const AllRecords: React.FC<AllRecordsProps> = ({
                                     <th className="p-3 font-medium text-gray-600">DOB</th>
                                     <th className="p-3 font-medium text-gray-600">CONTACTS</th>
                                     <th className="p-3 font-medium text-gray-600">RES</th>
+                                    <th className="p-3 font-medium text-gray-600">SCHEME</th>
                                     <th className="p-3 font-medium text-gray-600">Insurance</th>
                                     <th className="p-3 font-medium text-gray-600">NOTES</th>
                                 </tr>
@@ -155,6 +156,7 @@ const AllRecords: React.FC<AllRecordsProps> = ({
                                             <td className="p-3 text-gray-500">{formatDOB(p.dob)}</td>
                                             <td className="p-3">{p.contacts}</td>
                                             <td className="p-3">{p.res}</td>
+                                            <td className="p-3">{p.scheme || '—'}</td>
                                             <td className="p-3">{p.op}</td>
                                             <td className="p-3 text-gray-500 max-w-xs truncate" title={p.clinic_notes || ''}>{p.clinic_notes || '—'}</td>
                                         </tr>

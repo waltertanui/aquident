@@ -26,6 +26,7 @@ export interface PatientRecord {
   op: string;
   dr?: string;
   ins?: string;
+  scheme?: string; // ADD: Scheme field
   // ADD: Treatment status fields
   status?: "active" | "completed" | "lab";
   procedure?: string[];
@@ -42,6 +43,7 @@ export interface PatientRecord {
   insurance_amount?: number;
   cash_amount?: number;
   balance?: number;
+  invoice_status?: "Paid" | "Paid Less" | "Disputed"; // ADD: Invoice Status
   to_come_again?: boolean;
   // ADD: Price locking for fraud prevention
   price_locked?: boolean;
@@ -65,6 +67,7 @@ export interface WalkinInput {
   op: string;
   dr?: string;
   ins?: string;
+  scheme?: string; // ADD: Scheme field
   clinic_notes?: string; // Notes from front office sent to clinic
 }
 
@@ -95,6 +98,7 @@ export async function listWalkins(): Promise<PatientRecord[]> {
     op: row.op,
     dr: row.dr ?? undefined,
     ins: row.ins ?? undefined,
+    scheme: row.scheme ?? undefined,
     // ADD: Map new fields
     status: row.status ?? "active",
     procedure: row.procedure ?? [],
@@ -110,6 +114,7 @@ export async function listWalkins(): Promise<PatientRecord[]> {
     insurance_amount: row.insurance_amount ?? 0,
     cash_amount: row.cash_amount ?? 0,
     balance: row.balance ?? 0,
+    invoice_status: row.invoice_status ?? undefined,
     to_come_again: row.to_come_again ?? false,
     // Price locking fields
     price_locked: row.price_locked ?? false,
@@ -150,6 +155,7 @@ export async function createWalkin(input: WalkinInput, dob?: string): Promise<Pa
       op: input.op,
       dr: input.dr,
       ins: input.ins,
+      scheme: input.scheme,
       clinic_notes: input.clinic_notes,
       dob,
       newId: nowNo,
@@ -170,6 +176,7 @@ export async function createWalkin(input: WalkinInput, dob?: string): Promise<Pa
     op: row.op,
     dr: row.dr ?? undefined,
     ins: row.ins ?? undefined,
+    scheme: row.scheme ?? undefined,
     status: "active",
     procedure: [],
     lab_materials: [],
@@ -182,6 +189,7 @@ export async function createWalkin(input: WalkinInput, dob?: string): Promise<Pa
     insurance_amount: 0,
     cash_amount: 0,
     balance: 0,
+    invoice_status: undefined,
     to_come_again: false,
     clinic_notes: row.clinic_notes ?? input.clinic_notes ?? undefined,
     created_at: row.created_at ?? undefined,
@@ -384,6 +392,7 @@ export interface ExternalLabOrder {
   items: OrderItem[];
   quote: ExternalLabOrderQuote;
   status: ExternalLabOrderStatus;
+  invoice_status: "Paid" | "Paid Less" | "Disputed" | "Not Yet Paid";
   capacity_ok?: boolean;
   last_message?: string;
   created_at?: string;
@@ -402,6 +411,7 @@ export interface ExternalLabOrderInput {
   items?: OrderItem[];
   quote?: ExternalLabOrderQuote;
   status?: ExternalLabOrderStatus;
+  invoice_status?: "Paid" | "Paid Less" | "Disputed" | "Not Yet Paid";
   capacity_ok?: boolean;
   last_message?: string;
 }
@@ -432,6 +442,7 @@ export async function listExternalLabOrders(): Promise<ExternalLabOrder[]> {
     items: row.items ?? [],
     quote: row.quote ?? { subtotal: 0, tax: 0, total: 0, status: "pending" },
     status: row.status ?? "draft",
+    invoice_status: row.invoice_status ?? "Not Yet Paid",
     capacity_ok: row.capacity_ok ?? undefined,
     last_message: row.last_message ?? undefined,
     created_at: row.created_at ?? undefined,
@@ -455,6 +466,7 @@ export async function createExternalLabOrder(
     items: input.items ?? [],
     quote: input.quote ?? { subtotal: 0, tax: 0, total: 0, status: "pending" },
     status: input.status ?? "draft",
+    invoice_status: input.invoice_status ?? "Not Yet Paid",
     capacity_ok: input.capacity_ok ?? null,
     last_message: input.last_message || null,
   };
@@ -483,6 +495,7 @@ export async function createExternalLabOrder(
     items: row.items ?? [],
     quote: row.quote ?? { subtotal: 0, tax: 0, total: 0, status: "pending" },
     status: row.status ?? "draft",
+    invoice_status: row.invoice_status ?? "Not Yet Paid",
     capacity_ok: row.capacity_ok ?? undefined,
     last_message: row.last_message ?? undefined,
     created_at: row.created_at ?? undefined,
@@ -1075,6 +1088,8 @@ export interface InternalInventoryItem {
   initial_qty: number;
   qty: number;
   status: InternalInventoryStatus;
+  delivery_date?: string;
+  delivery_note_url?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -1085,6 +1100,8 @@ export interface InternalInventoryInput {
   initial_qty: number;
   qty: number;
   status?: InternalInventoryStatus;
+  delivery_date?: string;
+  delivery_note_url?: string;
 }
 
 const INTERNAL_INVENTORY_TABLE = "internal_inventory";
@@ -1115,6 +1132,8 @@ export async function listInternalInventory(): Promise<InternalInventoryItem[]> 
     initial_qty: row.initial_qty ?? row.qty,
     qty: row.qty,
     status: row.status,
+    delivery_date: row.delivery_date ?? undefined,
+    delivery_note_url: row.delivery_note_url ?? undefined,
     created_at: row.created_at,
     updated_at: row.updated_at,
   }));
@@ -1132,6 +1151,8 @@ export async function createInternalInventoryItem(
     initial_qty: input.initial_qty,
     qty: input.qty,
     status: status,
+    delivery_date: input.delivery_date,
+    delivery_note_url: input.delivery_note_url,
   };
 
   const { data, error } = await sb

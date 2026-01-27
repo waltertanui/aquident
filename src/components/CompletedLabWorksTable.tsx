@@ -16,6 +16,7 @@ interface EditFormData {
     to_come_again: boolean;
     card_image_url: string;
     consent_form_url: string;
+    invoice_status: "Paid" | "Paid Less" | "Disputed" | "";
 }
 
 interface NewInstallment {
@@ -33,7 +34,8 @@ const CompletedLabWorksTable: React.FC<CompletedLabWorksTableProps> = ({ patient
         cash_amount: 0,
         to_come_again: false,
         card_image_url: '',
-        consent_form_url: ''
+        consent_form_url: '',
+        invoice_status: ''
     });
     const [isSaving, setIsSaving] = useState(false);
 
@@ -69,19 +71,17 @@ const CompletedLabWorksTable: React.FC<CompletedLabWorksTableProps> = ({ patient
     };
 
     const calculateBalance = (p: PatientRecord) => {
-        const labCost = p.lab_cost || 0;
         const clinicCost = p.clinic_cost || 0;
         const insurance = p.insurance_amount || 0;
         const cash = p.cash_amount || 0;
         const installmentsTotal = calculateInstallmentsTotal(p.installments || []);
-        return (labCost + clinicCost) - insurance - cash - installmentsTotal;
+        return clinicCost - insurance - cash - installmentsTotal;
     };
 
     const calculateFormBalance = () => {
         if (!editingPatient) return 0;
-        const labCost = editingPatient.lab_cost || 0;
         const installmentsTotal = calculateInstallmentsTotal(localInstallments);
-        return (labCost + formData.clinic_cost) - formData.insurance_amount - formData.cash_amount - installmentsTotal;
+        return formData.clinic_cost - formData.insurance_amount - formData.cash_amount - installmentsTotal;
     };
 
     const handleEditClick = (p: PatientRecord) => {
@@ -92,7 +92,8 @@ const CompletedLabWorksTable: React.FC<CompletedLabWorksTableProps> = ({ patient
             cash_amount: p.cash_amount || 0,
             to_come_again: p.to_come_again || false,
             card_image_url: p.card_image_url || '',
-            consent_form_url: p.consent_form_url || ''
+            consent_form_url: p.consent_form_url || '',
+            invoice_status: p.invoice_status || ''
         });
         setLocalInstallments(p.installments || []);
     };
@@ -101,7 +102,7 @@ const CompletedLabWorksTable: React.FC<CompletedLabWorksTableProps> = ({ patient
         setEditingPatient(null);
         setFormData({
             clinic_cost: 0, insurance_amount: 0, cash_amount: 0, to_come_again: false,
-            card_image_url: '', consent_form_url: ''
+            card_image_url: '', consent_form_url: '', invoice_status: ''
         });
         setLocalInstallments([]);
         setShowInstallmentModal(false);
@@ -198,6 +199,8 @@ const CompletedLabWorksTable: React.FC<CompletedLabWorksTableProps> = ({ patient
         const printTime = now.toLocaleTimeString("en-KE", { hour: "2-digit", minute: "2-digit" });
         const voucherNo = `VCH-${String(p.no).padStart(6, '0')}`;
         const ngNo = String(p.no).padStart(7, '0');
+
+        const authNo = `AUTH-${String(p.no).padStart(4, '0')}-${Math.floor(1000 + Math.random() * 9000)}`;
 
         // Build procedure rows
         const procedures = p.procedure || [];
@@ -327,11 +330,13 @@ const CompletedLabWorksTable: React.FC<CompletedLabWorksTableProps> = ({ patient
                 <div class="header">
                     <img class="logo" src="${logo}" alt="Logo" />
                     <div class="header-text">
-                        <div class="company-name">Aquadent Dental Clinic, Eldoret</div>
+                        <div class="company-name">AQUADENT COMPANY LIMITED</div>
+                        <div class="company-info" style="font-weight: bold; margin-bottom: 5px;">Restore Your Smile</div>
                         <div class="company-info">
-                            P.O. Box 1234, Eldoret. Telephone: 053-2030000, 0722-000000<br>
-                            Mobile: 0722 000000, 0733 000000 Fax: 053-2030001<br>
-                            E-mail: info@aquadent.co.ke
+                            Sagaas Business Centre, 2nd Floor, Nandi Road<br>
+                            P.O. Box 6001-30100, Eldoret<br>
+                            Tel: 0708 315 325 / 0799 413 203<br>
+                            Email: info@aquadentclinic.co.ke | KRA PIN: P051625610X
                         </div>
                     </div>
                 </div>
@@ -353,8 +358,8 @@ const CompletedLabWorksTable: React.FC<CompletedLabWorksTableProps> = ({ patient
                     <div>
                         <div class="info-row"><span class="info-label">Voucher No.:</span> <span class="info-value">${voucherNo}</span></div>
                         <div class="info-row"><span class="info-label">Corporate:</span> <span class="info-value">${p.op || 'INSURANCE'}</span></div>
-                        <div class="info-row"><span class="info-label">Scheme:</span> <span class="info-value">${p.op || 'INSURANCE'}</span></div>
-                        <div class="info-row"><span class="info-label">Trans.auth.no:</span> <span class="info-value">-</span></div>
+                        <div class="info-row"><span class="info-label">Scheme:</span> <span class="info-value">${p.scheme || p.op || 'INSURANCE'}</span></div>
+                        <div class="info-row"><span class="info-label">Trans.auth.no:</span> <span class="info-value">${authNo}</span></div>
                         <div class="info-row"><span class="info-label">Agr - No:</span> <span class="info-value">-</span></div>
                         <div class="info-row"><span class="info-label">Emp No:</span> <span class="info-value">SM</span></div>
                     </div>
@@ -437,7 +442,7 @@ const CompletedLabWorksTable: React.FC<CompletedLabWorksTableProps> = ({ patient
         });
 
         const invoiceNumber = `RCP-${String(p.no).padStart(6, '0')}`;
-        const totalCost = (p.lab_cost || 0) + (p.clinic_cost || 0);
+        const totalCost = (p.clinic_cost || 0);
         const installmentsTotal = calculateInstallmentsTotal(p.installments || []);
         const balance = calculateBalance(p);
 
@@ -529,59 +534,63 @@ const CompletedLabWorksTable: React.FC<CompletedLabWorksTableProps> = ({ patient
                     .header-content {
                         position: relative;
                         z-index: 1;
-                        display: flex;
-                        justify-content: space-between;
+                        display: grid;
+                        grid-template-columns: auto 1fr auto; /* Logo, Centered Text, Badge */
+                        gap: 20px;
                         align-items: center;
-                    }
-                    
-                    .brand {
-                        display: flex;
-                        align-items: center;
-                        gap: 10px;
                     }
                     
                     .brand-icon {
-                        width: 40px;
-                        height: 40px;
+                        width: 50px;
+                        height: 50px;
                         background: white;
                         border-radius: 8px;
                         display: flex;
                         align-items: center;
                         justify-content: center;
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                    }
+                    
+                    .brand-text {
+                        text-align: center;
                     }
                     
                     .brand-text h1 {
-                        font-size: 16px;
-                        font-weight: 700;
-                        margin-bottom: 2px;
+                        font-size: 18px;
+                        font-weight: 800;
+                        margin-bottom: 4px;
                         letter-spacing: -0.5px;
+                        line-height: 1.2;
                     }
                     
                     .brand-text p {
                         font-size: 10px;
-                        opacity: 0.9;
+                        opacity: 0.95;
                         font-weight: 400;
+                        line-height: 1.4;
                     }
                     
                     .receipt-badge {
                         background: rgba(255,255,255,0.2);
                         backdrop-filter: blur(10px);
-                        padding: 6px 12px;
-                        border-radius: 6px;
+                        padding: 8px 15px;
+                        border-radius: 8px;
                         text-align: right;
+                        border: 1px solid rgba(255,255,255,0.1);
                     }
                     
                     .receipt-badge .label {
                         font-size: 9px;
                         text-transform: uppercase;
                         letter-spacing: 1px;
-                        opacity: 0.8;
+                        opacity: 0.9;
                         margin-bottom: 2px;
                     }
                     
                     .receipt-badge .number {
-                        font-size: 12px;
+                        font-size: 14px;
                         font-weight: 700;
+                        font-family: monospace;
                     }
                     
                     /* Content area */
@@ -847,14 +856,15 @@ const CompletedLabWorksTable: React.FC<CompletedLabWorksTableProps> = ({ patient
                     <div class="receipt-container">
                         <div class="header">
                             <div class="header-content">
-                                <div class="brand">
-                                    <div class="brand-icon">
-                                        <img src="${logo}" alt="Aquadent" style="width: 100%; height: 100%; object-fit: contain; padding: 3px;" />
-                                    </div>
-                                    <div class="brand-text">
-                                        <h1>Aquadent Dental Clinic</h1>
-                                        <p>restore your smile</p>
-                                    </div>
+                                <div class="brand-icon">
+                                    <img src="${logo}" alt="Aquadent" style="width: 100%; height: 100%; object-fit: contain; padding: 3px;" />
+                                </div>
+                                <div class="brand-text">
+                                    <h1>AQUADENT COMPANY LIMITED</h1>
+                                    <p>Restore Your Smile</p>
+                                    <p style="font-size: 9px; margin-top: 2px;">Sagaas Business Centre, 2nd Floor, Nandi Road</p>
+                                    <p style="font-size: 9px;">P.O. Box 6001-30100, Eldoret | Tel: 0708 315 325</p>
+                                    <p style="font-size: 9px;">KRA PIN: P051625610X</p>
                                 </div>
                                 <div class="receipt-badge">
                                     <div class="label">Receipt</div>
@@ -885,22 +895,14 @@ const CompletedLabWorksTable: React.FC<CompletedLabWorksTableProps> = ({ patient
                             </div>
                         ` : ""}
 
-                            ${p.lab_procedures ? `
-                            <div class="section">
-                                <div class="section-title">Laboratory Procedures</div>
-                                <div class="procedures-box">${p.lab_procedures}</div>
-                            </div>
-                        ` : ""}
+
 
                             <div class="summary-container">
                                 <div class="summary-col">
                                     <div class="section">
                                         <div class="section-title">Cost Summary</div>
                                         <div class="cost-card">
-                                            <div class="cost-row">
-                                                <span class="label">Laboratory</span>
-                                                <span class="amount">Ksh ${(p.lab_cost || 0).toLocaleString()}</span>
-                                            </div>
+
                                             <div class="cost-row">
                                                 <span class="label">Clinical</span>
                                                 <span class="amount">Ksh ${(p.clinic_cost || 0).toLocaleString()}</span>
@@ -952,8 +954,8 @@ const CompletedLabWorksTable: React.FC<CompletedLabWorksTableProps> = ({ patient
                     </div>
 
                     <div class="footer">
-                        <p class="tagline">Thank you for choosing Aquadent Dental Clinic!</p>
-                        <p class="contact">info@aquadent.co.ke • +254 700 000 000 • Eldoret, Kenya</p>
+                        <p class="tagline">Thank you for choosing Aquadent Company Limited!</p>
+                        <p class="contact">info@aquadentclinic.co.ke • 0708 315 325 / 0799 413 203 • Eldoret, Kenya</p>
                     </div>
 
                     <div class="no-print">
@@ -973,111 +975,120 @@ const CompletedLabWorksTable: React.FC<CompletedLabWorksTableProps> = ({ patient
     return (
         <>
             <div className="overflow-x-auto border rounded-md">
-                <table className="min-w-full text-sm">
+                <table className="min-w-full text-xs">
                     <thead className="bg-gray-50">
                         <tr className="text-left border-b">
-                            <th className="p-3 font-medium text-gray-600 sticky left-0 z-20 bg-gray-50 border-r border-gray-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] w-[60px] min-w-[60px] max-w-[60px]">NO</th>
-                            <th className="p-3 font-medium text-gray-600 sticky left-[60px] z-20 bg-gray-50 border-r border-gray-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] min-w-[150px]">PATIENT</th>
-                            <th className="p-3 font-medium text-gray-600">G</th>
-                            <th className="p-3 font-medium text-gray-600">AGE</th>
-                            <th className="p-3 font-medium text-gray-600">CONTACTS</th>
-                            <th className="p-3 font-medium text-gray-600">RES</th>
-                            <th className="p-3 font-medium text-gray-600">INSURANCE</th>
-                            <th className="p-3 font-medium text-gray-600">PROCEDURE</th>
-                            <th className="p-3 font-medium text-gray-600">LAB PROCEDURES</th>
-                            <th className="p-3 font-medium text-gray-600">NOTES</th>
-                            <th className="p-3 font-medium text-gray-600">TYPE</th>
-                            <th className="p-3 font-medium text-gray-600">LAB COST</th>
-                            <th className="p-3 font-medium text-gray-600">LAB STATUS</th>
-                            <th className="p-3 font-medium text-gray-600 bg-blue-50">CLINIC COST</th>
-                            <th className="p-3 font-medium text-gray-600 bg-blue-50">INS. AMT</th>
-                            <th className="p-3 font-medium text-gray-600 bg-blue-50">CASH</th>
-                            <th className="p-3 font-medium text-gray-600 bg-blue-50">INSTALLMENTS</th>
-                            <th className="p-3 font-medium text-gray-600 bg-blue-50">BALANCE</th>
-                            <th className="p-3 font-medium text-gray-600 bg-blue-50">COME AGAIN</th>
-                            <th className="p-3 font-medium text-gray-600">ACTION</th>
+                            <th className="p-1.5 font-medium text-gray-600 sticky left-0 z-20 bg-gray-50 border-r border-gray-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] w-[40px] min-w-[40px] max-w-[40px]">NO</th>
+                            <th className="p-1.5 font-medium text-gray-600 sticky left-[40px] z-20 bg-gray-50 border-r border-gray-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] min-w-[120px]">PATIENT</th>
+                            <th className="p-1.5 font-medium text-gray-600">G</th>
+                            <th className="p-1.5 font-medium text-gray-600">AGE</th>
+                            <th className="p-1.5 font-medium text-gray-600">CONTACTS</th>
+                            <th className="p-1.5 font-medium text-gray-600">RES</th>
+                            <th className="p-1.5 font-medium text-gray-600">INSURANCE</th>
+                            <th className="p-1.5 font-medium text-gray-600">PROCEDURE</th>
+
+                            <th className="p-1.5 font-medium text-gray-600 bg-blue-50">CLINIC COST</th>
+                            <th className="p-1.5 font-medium text-gray-600 bg-blue-50">INS. AMT</th>
+                            <th className="p-1.5 font-medium text-gray-600 bg-blue-50">CASH</th>
+                            <th className="p-1.5 font-medium text-gray-600 bg-blue-50">INSTALLMENTS</th>
+                            <th className="p-1.5 font-medium text-gray-600 bg-blue-50">BALANCE</th>
+
+                            <th className="p-1.5 font-medium text-gray-600 bg-blue-50">COME AGAIN</th>
+                            <th className="p-1.5 font-medium text-gray-600">INV. STATUS</th>
+                            <th className="p-1.5 font-medium text-gray-600">ACTION</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                         {filteredPatients.length === 0 ? (
                             <tr>
-                                <td colSpan={19} className="p-4 text-center text-slate-500">
+                                <td colSpan={16} className="p-4 text-center text-slate-500">
                                     No records found for the selected criteria.
                                 </td>
                             </tr>
                         ) : (
                             filteredPatients.map((p) => (
                                 <tr key={p.no} className="hover:bg-slate-50">
-                                    <td className="p-3 sticky left-0 z-10 bg-white border-r border-gray-100 font-medium w-[60px] min-w-[60px] max-w-[60px]">{p.no}</td>
-                                    <td className="p-3 font-medium sticky left-[60px] z-10 bg-white border-r border-gray-100 min-w-[150px]">{p.name}</td>
-                                    <td className="p-3">{p.g}</td>
-                                    <td className="p-3">{getAge(p)}</td>
-                                    <td className="p-3">{p.contacts}</td>
-                                    <td className="p-3">{p.res}</td>
-                                    <td className="p-3">{p.op}</td>
-                                    <td className="p-3 text-gray-500 max-w-[200px]">
+                                    <td className="p-1.5 sticky left-0 z-10 bg-white border-r border-gray-100 font-medium w-[40px] min-w-[40px] max-w-[40px]">{p.no}</td>
+                                    <td className="p-1.5 font-medium sticky left-[40px] z-10 bg-white border-r border-gray-100 min-w-[120px]">{p.name}</td>
+                                    <td className="p-1.5">{p.g}</td>
+                                    <td className="p-1.5">{getAge(p)}</td>
+                                    <td className="p-1.5">{p.contacts}</td>
+                                    <td className="p-1.5">{p.res}</td>
+                                    <td className="p-1.5">{p.op}</td>
+                                    <td className="p-1.5 text-gray-500 max-w-[150px]">
                                         <div className="truncate" title={p.procedure?.join(', ')}>{p.procedure?.join(', ') || '-'}</div>
                                     </td>
-                                    <td className="p-3 max-w-[200px]">
-                                        <div className="truncate" title={p.lab_procedures}>{p.lab_procedures || '-'}</div>
-                                    </td>
-                                    <td className="p-3 max-w-[200px]">
-                                        <div className="truncate" title={p.lab_notes}>{p.lab_notes || '-'}</div>
-                                    </td>
-                                    <td className="p-3">
-                                        <span className={`text - xs px - 2 py - 1 rounded - full ${p.lab_type === 'Internal' ? 'bg-blue-50 text-blue-700' : 'bg-orange-50 text-orange-700'} `}>
-                                            {p.lab_type || 'Internal'}
-                                        </span>
-                                    </td>
-                                    <td className="p-3 font-semibold text-slate-800">
-                                        {p.lab_cost?.toLocaleString() || '0'}
-                                    </td>
-                                    <td className="p-3">
-                                        <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs">Completed</span>
-                                    </td>
+
+
                                     {/* Display values (read-only) */}
-                                    <td className="p-3 bg-blue-50/30 text-right font-medium">
+                                    <td className="p-1.5 bg-blue-50/30 text-right font-medium">
                                         {(p.clinic_cost || 0).toLocaleString()}
                                     </td>
-                                    <td className="p-3 bg-blue-50/30 text-right font-medium">
+                                    <td className="p-1.5 bg-blue-50/30 text-right font-medium">
                                         {(p.insurance_amount || 0).toLocaleString()}
                                     </td>
-                                    <td className="p-3 bg-blue-50/30 text-right font-medium">
+                                    <td className="p-1.5 bg-blue-50/30 text-right font-medium">
                                         {(p.cash_amount || 0).toLocaleString()}
                                     </td>
-                                    <td className="p-3 bg-blue-50/30 text-right font-medium">
+                                    <td className="p-1.5 bg-blue-50/30 text-right font-medium">
                                         <span className="text-purple-600">
                                             {calculateInstallmentsTotal(p.installments || []).toLocaleString()}
                                         </span>
                                         {(p.installments || []).length > 0 && (
-                                            <span className="ml-1 text-xs text-gray-500">
+                                            <span className="ml-1 text-[10px] text-gray-500">
                                                 ({(p.installments || []).length})
                                             </span>
                                         )}
                                     </td>
-                                    <td className="p-3 bg-blue-50/30">
-                                        <span className={`font - semibold ${calculateBalance(p) > 0 ? 'text-red-600' : calculateBalance(p) < 0 ? 'text-green-600' : 'text-gray-600'} `}>
+                                    <td className="p-1.5 bg-blue-50/30">
+                                        <span className={`font-semibold ${calculateBalance(p) > 0 ? 'text-red-600' : calculateBalance(p) < 0 ? 'text-green-600' : 'text-gray-600'} `}>
                                             {calculateBalance(p).toLocaleString()}
                                         </span>
                                     </td>
-                                    <td className="p-3 bg-blue-50/30 text-center">
+                                    <td className="p-1.5 bg-blue-50/30 text-center">
                                         {p.to_come_again ? (
                                             <span className="text-green-600 font-medium">Yes</span>
                                         ) : (
                                             <span className="text-gray-400">No</span>
                                         )}
                                     </td>
-                                    <td className="p-3">
-                                        <div className="flex gap-2">
+                                    <td className="p-1.5 text-center">
+                                        {(() => {
+                                            const totalCost = (p.clinic_cost || 0);
+                                            if (totalCost === 0) return <span className="text-gray-300">-</span>;
+
+                                            // Priority 1: Show Explicit Invoice Status from DB if set
+                                            if (p.invoice_status) {
+                                                const colors = {
+                                                    "Paid": "bg-green-100 text-green-700",
+                                                    "Paid Less": "bg-blue-100 text-blue-700",
+                                                    "Disputed": "bg-red-100 text-red-700"
+                                                };
+                                                return <span className={`${colors[p.invoice_status] || "bg-gray-100 text-gray-700"} px-1.5 py-0.5 rounded text-[10px] font-medium border border-current`}>
+                                                    {p.invoice_status.toUpperCase()}
+                                                </span>;
+                                            }
+
+                                            // Priority 2: Calculated Fallback
+                                            const balance = calculateBalance(p);
+                                            const totalPaid = (p.insurance_amount || 0) + (p.cash_amount || 0) + calculateInstallmentsTotal(p.installments || []);
+
+                                            if (balance <= 0) return <span className="bg-green-100 text-green-700 px-1.5 py-0.5 rounded text-[10px] font-medium">PAID</span>;
+                                            if (totalPaid > 0) return <span className="bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded text-[10px] font-medium">PARTIAL</span>;
+                                            return <span className="bg-red-100 text-red-700 px-1.5 py-0.5 rounded text-[10px] font-medium">UNPAID</span>;
+                                        })()}
+                                    </td>
+                                    <td className="p-1.5">
+                                        <div className="flex gap-1">
                                             <button
                                                 onClick={() => handleEditClick(p)}
-                                                className="px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded hover:bg-blue-700 transition-colors"
+                                                className="px-2 py-1 bg-blue-600 text-white text-[10px] font-medium rounded hover:bg-blue-700 transition-colors"
                                             >
                                                 {p.price_locked ? 'View' : 'Edit'}
                                             </button>
                                             <button
                                                 onClick={() => printReceipt(p)}
-                                                className="px-3 py-1.5 bg-gray-600 text-white text-xs font-medium rounded hover:bg-gray-700 transition-colors"
+                                                className="px-2 py-1 bg-gray-600 text-white text-[10px] font-medium rounded hover:bg-gray-700 transition-colors"
                                                 title="Print Receipt"
                                             >
                                                 🧾
@@ -1085,10 +1096,10 @@ const CompletedLabWorksTable: React.FC<CompletedLabWorksTableProps> = ({ patient
                                             {(p.insurance_amount || 0) > 0 && (
                                                 <button
                                                     onClick={() => printInvoice(p)}
-                                                    className="px-3 py-1.5 bg-amber-600 text-white text-xs font-medium rounded hover:bg-amber-700 transition-colors"
+                                                    className="px-2 py-1 bg-amber-600 text-white text-[10px] font-medium rounded hover:bg-amber-700 transition-colors"
                                                     title="Print Invoice (Insurance)"
                                                 >
-                                                    �
+
                                                 </button>
                                             )}
                                         </div>
@@ -1142,13 +1153,7 @@ const CompletedLabWorksTable: React.FC<CompletedLabWorksTableProps> = ({ patient
                                 </div>
                             )}
 
-                            {/* Lab Cost (read-only display) */}
-                            <div className="flex justify-between items-center py-2 bg-gray-50 px-3 rounded">
-                                <span className="text-sm text-gray-600">Lab Cost</span>
-                                <span className="font-semibold text-gray-800">
-                                    {(editingPatient.lab_cost || 0).toLocaleString()}
-                                </span>
-                            </div>
+
 
                             {/* Clinic Cost */}
                             <div className="flex justify-between items-center py-2 bg-gray-50 px-3 rounded">
@@ -1160,9 +1165,9 @@ const CompletedLabWorksTable: React.FC<CompletedLabWorksTableProps> = ({ patient
 
                             {/* Total Cost (calculated) */}
                             <div className="flex justify-between items-center py-2 bg-blue-50 px-3 rounded">
-                                <span className="text-sm font-medium text-blue-700">Total Cost (Lab + Clinic)</span>
+                                <span className="text-sm font-medium text-blue-700">Total Cost (Clinic)</span>
                                 <span className="font-semibold text-blue-800">
-                                    {((editingPatient.lab_cost || 0) + formData.clinic_cost).toLocaleString()}
+                                    {(formData.clinic_cost).toLocaleString()}
                                 </span>
                             </div>
 
@@ -1175,11 +1180,33 @@ const CompletedLabWorksTable: React.FC<CompletedLabWorksTableProps> = ({ patient
                                     type="number"
                                     value={formData.insurance_amount || ''}
                                     onChange={(e) => setFormData(prev => ({ ...prev, insurance_amount: parseFloat(e.target.value) || 0 }))}
-                                    className={`w - full px - 3 py - 2 border rounded - md focus: ring - 2 focus: ring - blue - 500 focus: border - blue - 500 ${isPriceLocked ? 'bg-gray-100 cursor-not-allowed' : ''} `}
+                                    className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isPriceLocked ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                                     placeholder="Enter insurance amount"
                                     disabled={isPriceLocked}
                                 />
                             </div>
+
+                            {/* Invoice Status Dropdown (Only visible if Insurance > 0) */}
+                            {(formData.insurance_amount > 0) && (
+                                <div className="mt-3 bg-blue-50/50 p-3 rounded-md border border-blue-100">
+                                    <label className="block text-sm font-medium text-blue-800 mb-1">
+                                        Invoice Status
+                                    </label>
+                                    <select
+                                        value={formData.invoice_status || ''}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, invoice_status: e.target.value as any }))}
+                                        className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white"
+                                    >
+                                        <option value="">Select Status...</option>
+                                        <option value="Paid">Paid</option>
+                                        <option value="Paid Less">Paid Less</option>
+                                        <option value="Disputed">Disputed</option>
+                                    </select>
+                                    <p className="text-xs text-blue-600 mt-1">
+                                        Update the status of the insurance claim invoice.
+                                    </p>
+                                </div>
+                            )}
 
                             {/* Cash */}
                             <div>

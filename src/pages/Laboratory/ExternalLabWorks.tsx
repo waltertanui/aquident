@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import PageHeader from "../../components/PageHeader";
 import Card from "../../ui/Card";
@@ -9,14 +9,7 @@ import logo from "../../assets/aquadent_logo.png";
 
 // ────────────────────────────────────────────────
 // TYPES (kept minimal)
-// ────────────────────────────────────────────────
-
-type OrderItem = {
-  product: string;
-  material: string;
-  quantity: number;
-  specs: string;
-};
+// ───────────────────────────────────────────────
 
 type FormData = {
   doctorName: string;
@@ -26,28 +19,11 @@ type FormData = {
   notes: string;
   lab_procedures: string;
   lab_cost: number;
-  items: OrderItem[];
 };
 
 // ────────────────────────────────────────────────
 // CONSTANTS
 // ────────────────────────────────────────────────
-
-const PRICE_BOOK: Record<string, number> = {
-  "Zirconia Crown": 140,
-  "Porcelain-Fused Bridge": 210,
-  "Complete Denture": 260,
-  "Implant Abutment": 190,
-  "Clear Aligner Set": 320,
-};
-
-const MATERIAL_MULTIPLIER: Record<string, number> = {
-  Zirconia: 1.25,
-  PMMA: 0.9,
-  Titanium: 1.4,
-  Composite: 1.0,
-  Gold: 1.8,
-};
 
 const DEFAULT_FORM_VALUES: FormData = {
   doctorName: "",
@@ -57,12 +33,6 @@ const DEFAULT_FORM_VALUES: FormData = {
   notes: "",
   lab_procedures: "",
   lab_cost: 0,
-  items: [{
-    product: "Zirconia Crown",
-    material: "Zirconia",
-    quantity: 1,
-    specs: "",
-  }],
 };
 
 // ────────────────────────────────────────────────
@@ -74,6 +44,7 @@ export default function ExternalLabWorks() {
   const [form, setForm] = useState<FormData>(DEFAULT_FORM_VALUES);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showInventoryModal, setShowInventoryModal] = useState(false);
+  const [showProcedures, setShowProcedures] = useState(false);
 
   // Fetch orders using useQuery
   const { data: orders = [], isLoading, refetch } = useQuery({
@@ -81,52 +52,8 @@ export default function ExternalLabWorks() {
     queryFn: listExternalLabOrders,
   });
 
-  const totalUnits = useMemo(
-    () => form.items.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0),
-    [form.items]
-  );
-
   const updateForm = (patch: Partial<FormData>) =>
     setForm(prev => ({ ...prev, ...patch }));
-
-  const updateItem = (index: number, patch: Partial<OrderItem>) =>
-    setForm(prev => ({
-      ...prev,
-      items: prev.items.map((item, i) => (i === index ? { ...item, ...patch } : item)),
-    }));
-
-  const addItem = () =>
-    setForm(prev => ({
-      ...prev,
-      items: [
-        ...prev.items,
-        {
-          product: "Implant Abutment",
-          material: "Titanium",
-          quantity: 1,
-          specs: "",
-        },
-      ],
-    }));
-
-  const loadSample = () => {
-    setForm({
-      doctorName: "Dr. Aurora Finch",
-      institution: "Starlight Dental Institute",
-      expectedDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-        .toISOString()
-        .slice(0, 10),
-      shippingMethod: "Courier",
-      notes: "Theme: celestial aesthetics. Request subtle opalescence on anterior units.",
-      lab_procedures: "",
-      lab_cost: 0,
-      items: [
-        { product: "Zirconia Crown", material: "Zirconia", quantity: 2, specs: "Shade A2, high translucency" },
-        { product: "Porcelain-Fused Bridge", material: "Composite", quantity: 1, specs: "3-unit bridge, canine guidance" },
-        { product: "Clear Aligner Set", material: "PMMA", quantity: 1, specs: "Stages 1–4" },
-      ],
-    });
-  };
 
   const handleTotalChange = useCallback((total: number) => {
     setForm(prev => {
@@ -164,7 +91,6 @@ export default function ExternalLabWorks() {
         notes: form.notes,
         lab_procedures: form.lab_procedures,
         lab_cost: form.lab_cost,
-        items: form.items,
         quote: {
           subtotal: form.lab_cost, // Assuming lab_cost is subtotal for now
           tax: 0,
@@ -172,6 +98,7 @@ export default function ExternalLabWorks() {
           status: "pending"
         },
         status: "draft",
+        invoice_status: "Not Yet Paid",
       };
 
       const { createExternalLabOrder } = await import("../../middleware/data");
@@ -192,6 +119,21 @@ export default function ExternalLabWorks() {
     }
   };
 
+  const handleStatusChange = async (orderId: string, newStatus: ExternalLabOrder["invoice_status"]) => {
+    try {
+      const { updateExternalLabOrder } = await import("../../middleware/data");
+      const success = await updateExternalLabOrder(orderId, { invoice_status: newStatus });
+      if (success) {
+        refetch();
+      } else {
+        alert("Failed to update status");
+      }
+    } catch (err) {
+      console.error("Error updating status:", err);
+      alert("Error updating status");
+    }
+  };
+
   // Print Invoice function (for formal records/insurance)
   const printInvoice = (order: ExternalLabOrder) => {
     const invoiceWindow = window.open("", "_blank");
@@ -205,18 +147,7 @@ export default function ExternalLabWorks() {
     const printTime = now.toLocaleTimeString("en-KE", { hour: "2-digit", minute: "2-digit" });
     const voucherNo = `INV-${order.id.slice(0, 8).toUpperCase()}`;
 
-    // Build item rows
-    const itemRows = (order.items || []).map((item, idx) => {
-      return `
-        <tr>
-          <td>${idx + 1}</td>
-          <td>${item.product}</td>
-          <td>${item.material}</td>
-          <td style="text-align: center;">${item.quantity}</td>
-          <td>${item.specs || "-"}</td>
-        </tr>
-      `;
-    }).join("");
+
 
     const totalAmount = order.quote?.total ?? order.lab_cost ?? 0;
 
@@ -243,9 +174,10 @@ export default function ExternalLabWorks() {
             padding-bottom: 10px;
           }
           .logo { 
-            width: 60px; 
-            height: 60px; 
+            height: 50px; 
+            width: auto; 
             margin-right: 15px;
+            object-fit: contain;
           }
           .header-text { flex: 1; text-align: center; }
           .company-name { font-size: 18px; font-weight: bold; }
@@ -260,19 +192,53 @@ export default function ExternalLabWorks() {
           .info-grid { 
             display: grid; 
             grid-template-columns: 1fr 1fr; 
-            gap: 5px;
-            margin-bottom: 15px;
+            gap: 20px;
+            margin-bottom: 25px;
           }
-          .info-row { display: flex; }
-          .info-label { width: 120px; font-weight: bold; }
+          .info-row { display: flex; font-size: 12px; margin-bottom: 5px; }
+          .info-label { width: 120px; font-weight: bold; color: #555; }
+          .info-value { font-weight: 500; color: #000; }
+          
+          /* Table Styles - Blue Header Block */
           table { 
             width: 100%; 
-            border-collapse: collapse; 
-            margin: 15px 0; 
+            border-collapse: separate; 
+            border-spacing: 0;
+            margin: 20px 0; 
             font-size: 11px;
           }
-          th, td { border: 1px solid #000; padding: 4px 6px; }
-          th { background: #f0f0f0; font-weight: bold; }
+          th { 
+            background: #2563eb; 
+            color: white; 
+            padding: 10px 15px; 
+            font-weight: 700; 
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border: none;
+            text-align: left;
+          }
+          th:first-child { border-radius: 6px 0 0 0; }
+          th:last-child { border-radius: 0 6px 0 0; text-align: center; }
+          
+          td { 
+            padding: 10px 15px; 
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 12px;
+            color: #333;
+          }
+          tr:last-child td { border-bottom: none; }
+          
+          .section-title {
+            color: #2563eb; 
+            font-weight: 700; 
+            font-size: 12px; 
+            letter-spacing: 0.5px; 
+            text-transform: uppercase; 
+            padding-bottom: 4px; 
+            border-bottom: 2px solid #2563eb; 
+            display: inline-block;
+            margin-bottom: 8px;
+          }
           .totals { margin-top: 10px; }
           .totals-row { 
             display: flex; 
@@ -310,45 +276,38 @@ export default function ExternalLabWorks() {
         <div class="header">
           <img class="logo" src="${logo}" alt="Logo" />
           <div class="header-text">
-            <div class="company-name">Aquadent Dental Clinic, Eldoret</div>
+            <div class="company-name">AQUADENT COMPANY LIMITED</div>
+            <div class="company-info" style="font-weight: bold; margin-bottom: 5px;">Restore Your Smile</div>
             <div class="company-info">
-              P.O. Box 1234, Eldoret. Telephone: 053-2030000, 0722-000000<br>
-              Mobile: 0722 000000, 0733 000000 Fax: 053-2030001<br>
-              E-mail: info@aquadent.co.ke
+              Sagaas Business Centre, 2nd Floor, Nandi Road<br>
+              P.O. Box 6001-30100, Eldoret<br>
+              Tel: 0708 315 325 / 0799 413 203<br>
+              Email: info@aquadentclinic.co.ke | KRA PIN: P051625610X
             </div>
           </div>
         </div>
 
-        <div class="invoice-title">EXTERNAL LAB INVOICE</div>
+        </div>
+        
+        <div style="margin-top: 10px; margin-bottom: 20px;">
+           <h2 class="invoice-title" style="margin: 0; text-align: left; border-bottom: none; text-decoration: none; color: #2563eb; font-size: 16px;">EXTERNAL LAB INVOICE</h2>
+        </div>
 
         <div class="info-grid">
           <div>
-            <div class="info-row"><span class="info-label">Print Date:</span> <span>${printDate} ${printTime}</span></div>
-            <div class="info-row"><span class="info-label">Invoice No.:</span> <span>${voucherNo}</span></div>
-            <div class="info-row"><span class="info-label">Doctor:</span> <span>${order.doctor_name?.toUpperCase()}</span></div>
-            <div class="info-row"><span class="info-label">Institution:</span> <span>${order.institution}</span></div>
+            <div class="info-row"><span class="info-label">Print Date:</span> <span class="info-value">${printDate} ${printTime}</span></div>
+            <div class="info-row"><span class="info-label">Invoice No.:</span> <span class="info-value">${voucherNo}</span></div>
+            <div class="info-row"><span class="info-label">Doctor:</span> <span class="info-value">${order.doctor_name?.toUpperCase()}</span></div>
+            <div class="info-row"><span class="info-label">Clinic:</span> <span class="info-value">${order.institution}</span></div>
           </div>
           <div>
-            <div class="info-row"><span class="info-label">Expected Date:</span> <span>${order.expected_date || "TBD"}</span></div>
-            <div class="info-row"><span class="info-label">Shipping:</span> <span>${order.shipping_method || "Courier"}</span></div>
-            <div class="info-row"><span class="info-label">Status:</span> <span>${order.status?.toUpperCase()}</span></div>
+            <div class="info-row"><span class="info-label">Expected Date:</span> <span class="info-value">${order.expected_date || "TBD"}</span></div>
+            <div class="info-row"><span class="info-label">Shipping:</span> <span class="info-value">${order.shipping_method || "Courier"}</span></div>
+            <div class="info-row"><span class="info-label">Status:</span> <span class="info-value">${order.status?.toUpperCase()}</span></div>
           </div>
         </div>
 
-        <table>
-          <thead>
-            <tr>
-              <th>No.</th>
-              <th>Product</th>
-              <th>Material</th>
-              <th>Qty</th>
-              <th>Specifications</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${itemRows || `<tr><td colspan="5" style="text-align: center;">No items</td></tr>`}
-          </tbody>
-        </table>
+
 
         ${order.lab_procedures ? `
           <div style="margin-bottom: 15px;">
@@ -370,9 +329,16 @@ export default function ExternalLabWorks() {
           <div class="totals-row final"><span>Total Amount</span><span>Ksh ${totalAmount.toLocaleString()}</span></div>
         </div>
 
-        <div class="signature">
-          <p>Authorized by: ___________________</p>
-          <p style="margin-top: 10px;">Date: ___________________</p>
+        <div class="signature" style="display: flex; justify-content: space-between; align-items: center; margin-top: 50px; font-size: 11px;">
+          <div>
+            <span style="font-weight: bold;">Official Signature:</span> _______________________
+          </div>
+          <div>
+            <span style="font-weight: bold;">S/No:</span> ${voucherNo}
+          </div>
+          <div>
+            <span style="font-weight: bold;">Patient/Guardian Signature:</span> _______________________
+          </div>
         </div>
 
         <div class="no-print">
@@ -423,14 +389,6 @@ export default function ExternalLabWorks() {
     const invoiceNumber = `RCP-${order.id.slice(0, 8).toUpperCase()}`;
     const totalAmount = order.quote?.total ?? order.lab_cost ?? 0;
 
-    const itemsHtml = (order.items || []).map(item => `
-      <tr>
-        <td style="padding: 8px; border-bottom: 1px solid #f0f0f0;">${item.product}</td>
-        <td style="padding: 8px; border-bottom: 1px solid #f0f0f0;">${item.material}</td>
-        <td style="padding: 8px; border-bottom: 1px solid #f0f0f0; text-align: center;">${item.quantity}</td>
-      </tr>
-    `).join("");
-
     const receiptHtml = `
       <!DOCTYPE html>
       <html>
@@ -458,51 +416,28 @@ export default function ExternalLabWorks() {
             background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
             color: white;
             padding: 15px 20px;
-            position: relative;
-          }
-          .header-content {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-          }
-          .brand {
             display: flex;
             align-items: center;
-            gap: 10px;
           }
-          .brand-icon {
-            width: 40px;
-            height: 40px;
-            background: white;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+          .logo {
+            height: 45px;
+            width: auto;
+            margin-right: 15px;
+            object-fit: contain;
           }
-          .brand-text h1 {
+          .header-text {
+            flex: 1;
+            text-align: center;
+            padding-right: 45px; /* Offset logo width to keep text centered */
+          }
+          .company-name {
             font-size: 16px;
             font-weight: 700;
             margin-bottom: 2px;
           }
-          .brand-text p {
+          .company-info {
             font-size: 10px;
             opacity: 0.9;
-          }
-          .receipt-badge {
-            background: rgba(255,255,255,0.2);
-            padding: 6px 12px;
-            border-radius: 6px;
-            text-align: right;
-          }
-          .receipt-badge .label {
-            font-size: 9px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            opacity: 0.8;
-          }
-          .receipt-badge .number {
-            font-size: 12px;
-            font-weight: 700;
           }
           .content { padding: 20px; }
           .info-grid {
@@ -550,22 +485,6 @@ export default function ExternalLabWorks() {
             border-bottom: 1px solid #2563eb;
             display: inline-block;
           }
-          table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 5px;
-          }
-          th {
-            background: #2563eb;
-            color: white;
-            padding: 8px 10px;
-            text-align: left;
-            font-size: 10px;
-            text-transform: uppercase;
-          }
-          th:first-child { border-radius: 6px 0 0 0; }
-          th:last-child { border-radius: 0 6px 0 0; }
-          td { padding: 8px 10px; font-size: 11px; }
           .total-box {
             background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
             color: white;
@@ -603,6 +522,21 @@ export default function ExternalLabWorks() {
           }
           .btn-primary { background: #2563eb; color: white; }
           .btn-secondary { background: #e5e5e5; color: #333; }
+          .signature-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-top: 30px;
+            padding: 0 5px;
+            font-size: 10px;
+            color: #1a1a1a;
+          }
+          .sig-line {
+            border-bottom: 1px solid #1a1a1a;
+            width: 120px;
+            display: inline-block;
+            margin-left: 5px;
+          }
           @media print {
             body { background: white; padding: 0; }
             .receipt-container { box-shadow: none; margin: 0; }
@@ -613,25 +547,21 @@ export default function ExternalLabWorks() {
       <body>
         <div class="receipt-container">
           <div class="header">
-            <div class="header-content">
-              <div class="brand">
-                <div class="brand-icon">
-                  <img src="${logo}" alt="Aquadent" style="width: 100%; height: 100%; object-fit: contain; padding: 3px;" />
-                </div>
-                <div class="brand-text">
-                  <h1>Aquadent Dental Lab</h1>
-                  <p>External Laboratory Services</p>
-                </div>
-              </div>
-              <div class="receipt-badge">
-                <div class="label">Receipt</div>
-                <div class="number">${invoiceNumber}</div>
+            <img class="logo" src="${logo}" alt="Logo" />
+            <div class="header-text">
+              <div class="company-name">AQUADENT COMPANY LIMITED</div>
+              <div class="company-info" style="font-weight: bold; margin-bottom: 5px;">Restore Your Smile</div>
+              <div class="company-info">
+                Sagaas Business Centre, 2nd Floor, Nandi Road<br>
+                P.O. Box 6001-30100, Eldoret<br>
+                Tel: 0708 315 325 / 0799 413 203<br>
+                Email: info@aquadentclinic.co.ke | KRA PIN: P051625610X
               </div>
             </div>
           </div>
 
           <div class="content">
-            <div class="info-grid">
+            <div class="info-grid" style="margin-top: 20px; border-bottom: none; padding-bottom: 0;">
               <div class="info-card">
                 <h3>Client</h3>
                 <div class="name">${order.doctor_name}</div>
@@ -643,24 +573,6 @@ export default function ExternalLabWorks() {
                 <div class="detail">${order.shipping_method || "Courier"}</div>
               </div>
             </div>
-
-            ${(order.items || []).length > 0 ? `
-              <div class="section">
-                <div class="section-title">Order Items</div>
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Product</th>
-                      <th>Material</th>
-                      <th style="text-align: center;">Qty</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    ${itemsHtml}
-                  </tbody>
-                </table>
-              </div>
-            ` : ""}
 
             ${order.lab_procedures ? `
               <div class="section">
@@ -677,9 +589,16 @@ export default function ExternalLabWorks() {
             </div>
           </div>
 
+          <div class="signature-section">
+            <div>Official Signature: <span class="sig-line"></span></div>
+            <div>S/No: ${invoiceNumber}</div>
+            <div>Patient/Guardian Signature: <span class="sig-line"></span></div>
+          </div>
+
           <div class="footer">
-            <p class="tagline">Thank you for choosing Aquadent Dental Lab!</p>
-            <p>info@aquadent.co.ke • +254 700 000 000 • Eldoret, Kenya</p>
+            <p class="tagline">Thank you for choosing Aquadent Dental Clinic!</p>
+            <p>Sagaas Business Centre, 2nd Floor, Nandi Road | P.O. Box 6001-30100, Eldoret</p>
+            <p>Tel: 0708 315 325 / 0799 413 203 | Email: info@aquadentclinic.co.ke</p>
           </div>
 
           <div class="no-print">
@@ -714,7 +633,7 @@ export default function ExternalLabWorks() {
             </div>
 
             <div className="space-y-1">
-              <label className="text-sm text-gray-600">Institution</label>
+              <label className="text-sm text-gray-600">Clinic</label>
               <input
                 className="w-full border rounded px-3 py-2"
                 value={form.institution}
@@ -749,91 +668,38 @@ export default function ExternalLabWorks() {
             </div>
           </div>
 
-          {/* Items */}
-          <div className="space-y-3">
-            <div className="font-medium flex items-center justify-between">
-              <span>Items</span>
-              <div className="space-x-2">
-                <button
-                  type="button"
-                  onClick={addItem}
-                  className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded"
-                >
-                  + Add Item
-                </button>
-                <button
-                  type="button"
-                  onClick={loadSample}
-                  className="px-3 py-1.5 text-sm bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded"
-                >
-                  Load Sample
-                </button>
-              </div>
-            </div>
 
-            {form.items.map((item, index) => (
-              <div
-                key={index}
-                className="grid grid-cols-1 md:grid-cols-12 gap-3 p-3 border rounded-lg bg-gray-50/40"
-              >
-                <div className="md:col-span-4">
-                  <select
-                    className="w-full border rounded px-3 py-2"
-                    value={item.product}
-                    onChange={e => updateItem(index, { product: e.target.value })}
-                  >
-                    {Object.keys(PRICE_BOOK).map(p => (
-                      <option key={p}>{p}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="md:col-span-3">
-                  <select
-                    className="w-full border rounded px-3 py-2"
-                    value={item.material}
-                    onChange={e => updateItem(index, { material: e.target.value })}
-                  >
-                    {Object.keys(MATERIAL_MULTIPLIER).map(m => (
-                      <option key={m}>{m}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="md:col-span-2">
-                  <input
-                    type="number"
-                    min={1}
-                    className="w-full border rounded px-3 py-2"
-                    value={item.quantity}
-                    onChange={e => updateItem(index, { quantity: Number(e.target.value) || 1 })}
-                  />
-                </div>
-
-                <div className="md:col-span-3">
-                  <input
-                    className="w-full border rounded px-3 py-2"
-                    placeholder="Specifications / Shade / etc."
-                    value={item.specs}
-                    onChange={e => updateItem(index, { specs: e.target.value })}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
 
           {/* Lab Procedures & Notes */}
           <div className="space-y-4">
-            <LabProcedures
-              onSelect={name =>
-                updateForm({
-                  lab_procedures: form.lab_procedures
-                    ? `${form.lab_procedures}, ${name}`
-                    : name,
-                })
-              }
-              onTotalChange={handleTotalChange}
-            />
+            <div className="flex items-center justify-between border-b pb-2">
+              <h3 className="text-sm font-semibold text-gray-700">Lab Procedures</h3>
+              <button
+                type="button"
+                onClick={() => setShowProcedures(!showProcedures)}
+                className={`text-xs px-3 py-1.5 rounded-md transition-all font-medium flex items-center gap-2 ${showProcedures
+                  ? "bg-red-50 text-red-600 hover:bg-red-100"
+                  : "bg-blue-50 text-blue-600 hover:bg-blue-100"
+                  }`}
+              >
+                {showProcedures ? "✕ Close Procedures" : "＋ Add Procedures"}
+              </button>
+            </div>
+
+            {showProcedures && (
+              <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                <LabProcedures
+                  onSelect={name =>
+                    updateForm({
+                      lab_procedures: form.lab_procedures
+                        ? `${form.lab_procedures}, ${name} `
+                        : name,
+                    })
+                  }
+                  onTotalChange={handleTotalChange}
+                />
+              </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -843,10 +709,6 @@ export default function ExternalLabWorks() {
                 <div className="border bg-gray-50 rounded px-4 py-2.5 font-medium text-slate-700">
                   Ksh {form.lab_cost.toLocaleString()}
                 </div>
-              </div>
-
-              <div className="text-sm flex items-end">
-                Total units: <strong className="ml-1">{totalUnits}</strong>
               </div>
             </div>
 
@@ -886,8 +748,8 @@ export default function ExternalLabWorks() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className={`px-8 py-3 rounded-lg font-medium transition-colors text-white ${isSubmitting ? "bg-gray-400 cursor-not-allowed" : "bg-green-600 hover:bg-green-700"
-                }`}
+              className={`px - 8 py - 3 rounded - lg font - medium transition - colors text - white ${isSubmitting ? "bg-gray-400 cursor-not-allowed" : "bg-green-600 hover:bg-green-700"
+                } `}
             >
               {isSubmitting ? "Submitting..." : "Generate Quote & Submit"}
             </button>
@@ -928,11 +790,12 @@ export default function ExternalLabWorks() {
                 <thead className="bg-gray-50 border-b">
                   <tr>
                     <th className="text-left px-4 py-3 font-medium text-gray-600">Doctor</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-600">Institution</th>
+                    <th className="text-left px-4 py-3 font-medium text-gray-600">Clinic</th>
                     <th className="text-left px-4 py-3 font-medium text-gray-600">Expected Date</th>
                     <th className="text-left px-4 py-3 font-medium text-gray-600">Lab Procedures</th>
                     <th className="text-right px-4 py-3 font-medium text-gray-600">Lab Cost</th>
-                    <th className="text-center px-4 py-3 font-medium text-gray-600">Status</th>
+                    <th className="text-center px-4 py-3 font-medium text-gray-600">Order Status</th>
+                    <th className="text-center px-4 py-3 font-medium text-gray-600">Invoice Status</th>
                     <th className="text-left px-4 py-3 font-medium text-gray-600">Created</th>
                     <th className="text-center px-4 py-3 font-medium text-gray-600">Actions</th>
                   </tr>
@@ -959,6 +822,22 @@ export default function ExternalLabWorks() {
                           }`}>
                           {order.status}
                         </span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <select
+                          value={order.invoice_status || "Not Yet Paid"}
+                          onChange={(e) => handleStatusChange(order.id, e.target.value as any)}
+                          className={`text-xs font-semibold rounded px-2 py-1 border focus:ring-2 focus:ring-blue-500 cursor-pointer ${order.invoice_status === "Paid" ? "bg-green-100 text-green-700 border-green-200" :
+                            order.invoice_status === "Paid Less" ? "bg-amber-100 text-amber-700 border-amber-200" :
+                              order.invoice_status === "Disputed" ? "bg-red-100 text-red-700 border-red-200" :
+                                "bg-gray-100 text-gray-700 border-gray-200"
+                            }`}
+                        >
+                          <option value="Paid">Paid</option>
+                          <option value="Paid Less">Paid Less</option>
+                          <option value="Disputed">Disputed</option>
+                          <option value="Not Yet Paid">Not Yet Paid</option>
+                        </select>
                       </td>
                       <td className="px-4 py-3 text-gray-500">
                         {order.created_at ? new Date(order.created_at).toLocaleDateString() : "-"}

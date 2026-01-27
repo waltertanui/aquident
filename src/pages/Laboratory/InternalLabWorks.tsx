@@ -239,7 +239,7 @@ function InternalLabWorks() {
 
             <LabProcedures
               onSelect={(name) => updateForm("lab_procedures", form.lab_procedures ? form.lab_procedures + ", " + name : name)}
-              onTotalChange={(total) => updateForm("lab_cost", total)}
+              hidePrices={true}
             />
 
             <form className="mt-6 space-y-6" onSubmit={handleSubmit}>
@@ -275,12 +275,7 @@ function InternalLabWorks() {
                 </div>
 
                 {/* Lab Cost Display (Read-only or Hidden if preferred, but showing for clarity as it's auto-calculated) */}
-                <div>
-                  <label className="block text-xs text-gray-700 font-medium mb-1">Lab Cost (Auto-calculated)</label>
-                  <div className="w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-semibold text-slate-700">
-                    Ksh {form.lab_cost.toLocaleString()}
-                  </div>
-                </div>
+                {/* Lab Cost Removed for Internal Lab */}
               </div>
 
               {/* Lab Completion Date */}
@@ -369,14 +364,14 @@ function InternalLabWorks() {
                 <th className="p-2">LAB PROCEDURES</th>
                 <th className="p-2">NOTES</th>
                 <th className="p-2">TYPE</th>
-                <th className="p-2">LAB COST</th>
+
                 <th className="p-2">STATUS</th>
               </tr>
             </thead>
             <tbody>
               {completedLabPatients.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="p-4 text-center text-slate-500">No completed lab works.</td>
+                  <td colSpan={7} className="p-4 text-center text-slate-500">No completed lab works.</td>
                 </tr>
               ) : (
                 completedLabPatients.map((p) => (
@@ -391,9 +386,7 @@ function InternalLabWorks() {
                         {p.lab_type || 'Internal'}
                       </span>
                     </td>
-                    <td className="p-2 font-semibold text-slate-800">
-                      {p.lab_cost?.toLocaleString() || '0'}
-                    </td>
+
                     <td className="p-2">
                       <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs">Completed</span>
                     </td>

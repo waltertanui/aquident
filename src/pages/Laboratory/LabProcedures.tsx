@@ -108,9 +108,10 @@ const PROCEDURE_CATEGORIES: LabProcedureCategory[] = [
 interface LabProceduresProps {
   onSelect?: (name: string) => void;
   onTotalChange?: (total: number) => void;
+  hidePrices?: boolean;
 }
 
-const LabProcedures: React.FC<LabProceduresProps> = ({ onSelect, onTotalChange }) => {
+const LabProcedures: React.FC<LabProceduresProps> = ({ onSelect, onTotalChange, hidePrices = false }) => {
   const [selected, setSelected] = useState<Record<string, SelectedItem>>({});
 
   const toggleItem = (item: LabProcedureItem) => {
@@ -198,9 +199,11 @@ const LabProcedures: React.FC<LabProceduresProps> = ({ onSelect, onTotalChange }
                       <span className="font-medium">{item.name}</span>
                     </label>
 
-                    <span className="font-semibold">
-                      Ksh {item.price.toLocaleString()}
-                    </span>
+                    {!hidePrices && (
+                      <span className="font-semibold">
+                        Ksh {item.price.toLocaleString()}
+                      </span>
+                    )}
                   </div>
 
                   {isSelected && (
@@ -240,12 +243,14 @@ const LabProcedures: React.FC<LabProceduresProps> = ({ onSelect, onTotalChange }
         </div>
       ))}
 
-      <div className="text-right text-lg font-bold">
-        Total:{" "}
-        <span className="text-blue-600">
-          Ksh {totalPrice().toLocaleString()}
-        </span>
-      </div>
+      {!hidePrices && (
+        <div className="text-right text-lg font-bold">
+          Total:{" "}
+          <span className="text-blue-600">
+            Ksh {totalPrice().toLocaleString()}
+          </span>
+        </div>
+      )}
     </div>
   );
 };
