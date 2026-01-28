@@ -27,7 +27,7 @@ function Sidebar() {
 
   return (
     <aside
-      className={`border-r border-slate-800 bg-slate-900 text-white overflow-y-auto h-screen sticky top-0 transition-all duration-300 ${isCollapsed ? 'w-[80px]' : 'w-64'}`}
+      className={`border-r border-slate-200 bg-slate-900 text-white overflow-y-auto h-screen sticky top-0 transition-all duration-300 ${isCollapsed ? 'w-[80px]' : 'w-64'}`}
       style={{ width: isCollapsed ? '80px' : '16rem' }}
     >
       <div className={`flex items-center gap-2 px-4 py-4 ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
