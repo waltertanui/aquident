@@ -844,7 +844,9 @@ export interface FinanceReportContent {
   regulatory_filings: boolean;
   internal_controls: string;
   audit_queries: string;
-  cash_flow_summary: boolean;
+  cash_flow_mpesa: number;
+  cash_flow_tende: number;
+  cash_flow_cash: number;
   variance_analysis: string;
   budget_monitoring: string;
   financial_ratios: string;

@@ -103,7 +103,7 @@ export default function AssistantReport() {
                             </button>
                         </div>
                         <div className="md:col-span-4">
-                            <label className="block text-xs font-semibold text-gray-700 mb-1">Inventory Check (Supplies/Equipment)</label>
+                            <label className="block text-xs font-semibold text-gray-700 mb-1">Inventory Check</label>
                             <input type="text" className="w-full border border-gray-400 rounded-md shadow-sm focus:ring-teal-500 focus:border-teal-500 sm:text-sm px-3 py-1.5"
                                 value={formData.inventory_check}
                                 onChange={e => setFormData({ ...formData, inventory_check: e.target.value })} />
@@ -150,7 +150,7 @@ export default function AssistantReport() {
                                 onChange={e => setFormData({ ...formData, patient_instructions: e.target.value })} />
                         </div>
                         <div>
-                            <label className="block text-xs font-semibold text-gray-700 mb-1">Dentist Coordination</label>
+                            <label className="block text-xs font-semibold text-gray-700 mb-1">Dentist Assist</label>
                             <textarea className="w-full border border-gray-400 rounded-md shadow-sm focus:ring-teal-500 focus:border-teal-500 sm:text-sm px-3 py-1.5" rows={2}
                                 value={formData.dentist_coordination}
                                 onChange={e => setFormData({ ...formData, dentist_coordination: e.target.value })} />

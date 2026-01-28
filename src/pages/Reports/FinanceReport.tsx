@@ -20,7 +20,9 @@ export default function FinanceReport() {
         regulatory_filings: false,
         internal_controls: "",
         audit_queries: "",
-        cash_flow_summary: false,
+        cash_flow_mpesa: 0,
+        cash_flow_tende: 0,
+        cash_flow_cash: 0,
         variance_analysis: "",
         budget_monitoring: "",
         financial_ratios: "",
@@ -170,14 +172,25 @@ export default function FinanceReport() {
                 <div className="space-y-3">
                     <h3 className="text-base font-semibold border-b pb-1 text-indigo-800 uppercase tracking-wide">4. Reporting & Analysis</h3>
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <div className="flex items-center justify-between border border-gray-400 rounded-md p-2 bg-gray-50 md:col-span-1">
-                            <label className="text-xs font-semibold text-blue-700 uppercase">Cash Flow Summary?</label>
-                            <button type="button" onClick={() => toggleBool('cash_flow_summary')}
-                                className={`w-10 h-5 rounded-full relative transition-colors ${formData.cash_flow_summary ? 'bg-indigo-600' : 'bg-gray-300'}`}>
-                                <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${formData.cash_flow_summary ? 'translate-x-5' : ''}`} />
-                            </button>
+                        <div>
+                            <label className="block text-xs font-semibold text-blue-700 mb-1 uppercase">MPESA (Ksh)</label>
+                            <input type="number" className="w-full border border-blue-400 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm px-3 py-1.5"
+                                value={formData.cash_flow_mpesa}
+                                onChange={e => setFormData({ ...formData, cash_flow_mpesa: parseFloat(e.target.value) || 0 })} />
                         </div>
-                        <div className="md:col-span-3">
+                        <div>
+                            <label className="block text-xs font-semibold text-blue-700 mb-1 uppercase">Tende (Ksh)</label>
+                            <input type="number" className="w-full border border-blue-400 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm px-3 py-1.5"
+                                value={formData.cash_flow_tende}
+                                onChange={e => setFormData({ ...formData, cash_flow_tende: parseFloat(e.target.value) || 0 })} />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-semibold text-blue-700 mb-1 uppercase">Cash (Ksh)</label>
+                            <input type="number" className="w-full border border-blue-400 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm px-3 py-1.5"
+                                value={formData.cash_flow_cash}
+                                onChange={e => setFormData({ ...formData, cash_flow_cash: parseFloat(e.target.value) || 0 })} />
+                        </div>
+                        <div>
                             {/* Spacer */}
                         </div>
 

@@ -67,10 +67,10 @@ function Sales() {
                     body { font-family: 'Inter', sans-serif; padding: 0; margin: 0; background: #f5f5f5; color: #1a1a1a; line-height: 1.3; font-size: 11px; }
                     .receipt-container { max-width: 600px; margin: 10px auto; background: white; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
                     .header { background: linear-gradient(135deg, #16a34a 0%, #15803d 100%); color: white; padding: 15px 20px; position: relative; overflow: hidden; }
-                    .header-content { position: relative; z-index: 1; display: flex; justify-content: space-between; align-items: center; }
-                    .brand { display: flex; align-items: center; gap: 10px; }
-                    .brand-icon { width: 40px; height: 40px; background: white; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
-                    .brand-text h1 { font-size: 16px; font-weight: 700; margin-bottom: 2px; }
+                    .header-content { position: relative; z-index: 1; display: flex; align-items: center; }
+                    .brand { display: flex; align-items: center; flex: 1; }
+                    .brand-icon { width: 40px; height: 40px; background: white; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+                    .brand-text { flex: 1; text-align: center; }
                     .brand-text p { font-size: 10px; opacity: 0.9; }
                     .receipt-badge { background: rgba(255,255,255,0.2); padding: 6px 12px; border-radius: 6px; text-align: right; }
                     .content { padding: 20px; }
@@ -95,7 +95,11 @@ function Sales() {
                         <div class="header-content">
                             <div class="brand">
                                 <div class="brand-icon"><img src="${logo}" style="width:100%;height:100%;object-fit:contain;padding:3px" /></div>
-                                <div class="brand-text"><h1>Aquadent Dental Clinic</h1><p>restore your smile</p></div>
+                                <div class="brand-text">
+                                    <h1>Aquadent Sales</h1>
+                                    <p style="font-size:10px">Restore Your Smile</p>
+                                    <p style="font-size:8px;margin-top:2px">Sagaas Business Centre, 2nd Floor, Nandi Road<br>P.O. Box 6001-30100, Eldoret<br>Tel: 0708 318 325 / 0799 413 203<br>Email: info@aquadentclinic.co.ke | KRA PIN: P051625610X</p>
+                                </div>
                             </div>
                             <div class="receipt-badge"><div style="font-size:9px">RECEIPT</div><div style="font-weight:700">${docNumber}</div></div>
                         </div>
@@ -116,6 +120,11 @@ function Sales() {
                         </div>
                     </div>
                     <div class="footer"><p>Thank you for choosing Aquadent!</p></div>
+                    <div style="display:flex;justify-content:space-between;padding:15px 20px;font-size:10px;border-top:1px solid #eee;background:#fafafa">
+                        <div><span>Official Signature: </span><span style="display:inline-block;width:120px;border-bottom:1px solid #000"></span></div>
+                        <div><span>S/No: ${docNumber}</span></div>
+                        <div><span>Patient/Guardian Signature: </span><span style="display:inline-block;width:120px;border-bottom:1px solid #000"></span></div>
+                    </div>
                 </div>
                 <div class="no-print"><button class="btn btn-primary" onclick="window.print()">Print Receipt</button></div>
             </body>
@@ -172,11 +181,13 @@ function Sales() {
                             <img src="${logo}" class="logo-img" alt="Logo" />
                         </div>
                         <div class="company-info">
-                            <div class="company-name">Aquadent Dental Clinic, Eldoret</div>
+                            <div class="company-name">AQUADENT COMPANY LIMITED</div>
+                            <div class="company-tagline" style="font-style: italic; font-size: 12px; margin-bottom: 5px;">Restore Your Smile</div>
                             <div class="company-details">
-                                P.O. Box 1234, Eldoret. Telephone: 053-2030000, 0722-000000<br>
-                                Mobile: 0722 000000, 0733 000000 Fax: 053-2030001<br>
-                                E-mail: info@aquadent.co.ke
+                                Sagaas Business Centre, 2nd Floor, Nandi Road<br>
+                                P.O. Box 6001-30100, Eldoret<br>
+                                Tel: 0708 318 325 / 0799 413 203<br>
+                                Email: info@aquadentclinic.co.ke | KRA PIN: P051625610X
                             </div>
                         </div>
                     </div>
@@ -194,14 +205,6 @@ function Sales() {
                             <div class="row"><span class="label">Srcl.:</span><span class="value">Aquadent Dental Center OPD</span></div>
                             <div class="row"><span class="label">Pat. Typ:</span><span class="value">${type === 'quote' ? 'QUOTE' : 'CREDIT'}</span></div>
                             <div class="row"><span class="label">Order No:</span><span class="value">${refNo}</span></div>
-                        </div>
-                        <div class="col">
-                            <div class="row"><span class="label">Voucher No.:</span><span class="value">${docNumber}</span></div>
-                            <div class="row"><span class="label">Corporate:</span><span class="value">-</span></div>
-                            <div class="row"><span class="label">Scheme:</span><span class="value">-</span></div>
-                            <div class="row"><span class="label">Trans.auth.no:</span><span class="value">-</span></div>
-                            <div class="row"><span class="label">Agr - No:</span><span class="value">-</span></div>
-                            <div class="row"><span class="label">Emp No:</span><span class="value">-</span></div>
                         </div>
                     </div>
                 </div>
@@ -247,7 +250,19 @@ function Sales() {
                 </div>
                 
                 <div class="footer-section">
-                    User: FRONTOFFICE
+                    <div style="display: flex; justify-content: space-between; margin-top: 40px; padding-top: 20px;">
+                        <div>
+                            <span>Official Signature: </span>
+                            <span style="display: inline-block; width: 180px; border-bottom: 1px solid #000;"></span>
+                        </div>
+                        <div style="text-align: center;">
+                            <span>S/No: ${docNumber}</span>
+                        </div>
+                        <div>
+                            <span>Patient/Guardian Signature: </span>
+                            <span style="display: inline-block; width: 180px; border-bottom: 1px solid #000;"></span>
+                        </div>
+                    </div>
                 </div>
                 
                 <div class="no-print">
@@ -349,6 +364,7 @@ function Sales() {
     const totalItemsSold = filteredSales.reduce((sum, s) => sum + s.quantity, 0);
     const cashRevenue = filteredSales.filter(s => s.payment_status === 'paid').reduce((sum, s) => sum + s.total_price, 0);
     const invoiceRevenue = filteredSales.filter(s => s.payment_status === 'pending').reduce((sum, s) => sum + s.total_price, 0);
+    const settledInvoiceRevenue = filteredSales.filter(s => s.payment_status === 'pending' && s.invoice_status === 'paid').reduce((sum, s) => sum + s.total_price, 0);
 
     // Filter label for display
     const getFilterLabel = () => {
@@ -405,7 +421,7 @@ function Sales() {
             </Card>
 
             {/* Colorful KPI Cards */}
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
                 <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-lg p-2.5 text-white shadow-md">
                     <div className="flex items-center justify-between">
                         <div>
@@ -437,6 +453,17 @@ function Sales() {
                         <div className="text-xl opacity-80">📄</div>
                     </div>
                     <div className="mt-1 text-[10px] opacity-75">Pending invoices</div>
+                </div>
+
+                <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg p-2.5 text-white shadow-md">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <div className="text-xs opacity-90">Settled Invoices</div>
+                            <div className="text-lg font-bold">Ksh {settledInvoiceRevenue.toLocaleString()}</div>
+                        </div>
+                        <div className="text-xl opacity-80">✅</div>
+                    </div>
+                    <div className="mt-1 text-[10px] opacity-75">Paid invoices</div>
                 </div>
 
                 <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg p-2.5 text-white shadow-md">
@@ -600,9 +627,9 @@ function Sales() {
                                                         }
                                                     }}
                                                     className={`px-2 py-1 text-xs rounded border cursor-pointer focus:outline-none focus:ring-2 focus:ring-teal-500 ${sale.invoice_status === 'paid' ? 'bg-green-100 text-green-800 border-green-300' :
-                                                            sale.invoice_status === 'paid_less' ? 'bg-yellow-100 text-yellow-800 border-yellow-300' :
-                                                                sale.invoice_status === 'disputed' ? 'bg-red-100 text-red-800 border-red-300' :
-                                                                    'bg-orange-100 text-orange-800 border-orange-300'
+                                                        sale.invoice_status === 'paid_less' ? 'bg-yellow-100 text-yellow-800 border-yellow-300' :
+                                                            sale.invoice_status === 'disputed' ? 'bg-red-100 text-red-800 border-red-300' :
+                                                                'bg-orange-100 text-orange-800 border-orange-300'
                                                         }`}
                                                 >
                                                     <option value="not_yet_paid">Not Yet Paid</option>
