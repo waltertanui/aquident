@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import PageHeader from "../components/PageHeader";
 
 import {
@@ -8,12 +9,6 @@ import {
   listExternalLabOrders,
   listSales,
   listNotificationLogs,
-  type PatientRecord,
-  type Appointment,
-  type OpticalPatient,
-  type ExternalLabOrder,
-  type Sale,
-  type NotificationLog,
 } from "../middleware/data";
 
 import {
@@ -33,44 +28,41 @@ import {
 const formatCurrency = (n: number) => `Ksh ${n.toLocaleString()}`;
 
 function Dashboard() {
-  const [patients, setPatients] = useState<PatientRecord[]>([]);
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [opticalPatients, setOpticalPatients] = useState<OpticalPatient[]>([]);
-  const [externalOrders, setExternalOrders] = useState<ExternalLabOrder[]>([]);
-  const [sales, setSales] = useState<Sale[]>([]);
-  const [logs, setLogs] = useState<NotificationLog[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { data: patients = [], isLoading: loadingPatients } = useQuery({
+    queryKey: ['walkins'],
+    queryFn: listWalkins,
+  });
+
+  const { data: appointments = [], isLoading: loadingAppointments } = useQuery({
+    queryKey: ['appointments'],
+    queryFn: listAppointments,
+  });
+
+  const { data: opticalPatients = [], isLoading: loadingOptical } = useQuery({
+    queryKey: ['optical-patients'],
+    queryFn: listOpticalPatients,
+  });
+
+  const { data: externalOrders = [], isLoading: loadingExternal } = useQuery({
+    queryKey: ['external-lab-orders'],
+    queryFn: listExternalLabOrders,
+  });
+
+  const { data: sales = [], isLoading: loadingSales } = useQuery({
+    queryKey: ['sales'],
+    queryFn: listSales,
+  });
+
+  const { data: logs = [], isLoading: loadingLogs } = useQuery({
+    queryKey: ['notification-logs'],
+    queryFn: listNotificationLogs,
+  });
+
+  const isLoading = loadingPatients || loadingAppointments || loadingOptical || loadingExternal || loadingSales || loadingLogs;
+
   const [chartView, setChartView] = useState<"earnings" | "patients">("earnings");
   const [kpiFilter, setKpiFilter] = useState<"daily" | "weekly" | "monthly" | "all">("all");
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);
-
-  // Fetch all data on mount
-  useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      try {
-        const [patientsData, appointmentsData, opticalData, externalData, salesData, logsData] = await Promise.all([
-          listWalkins(),
-          listAppointments(),
-          listOpticalPatients(),
-          listExternalLabOrders(),
-          listSales(),
-          listNotificationLogs(),
-        ]);
-        setPatients(patientsData);
-        setAppointments(appointmentsData);
-        setOpticalPatients(opticalData);
-        setExternalOrders(externalData);
-        setSales(salesData);
-        setLogs(logsData);
-      } catch (error) {
-        console.error("Error fetching dashboard data:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
 
   // Calculate KPIs
   const kpis = useMemo(() => {
