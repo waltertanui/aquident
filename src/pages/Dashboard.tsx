@@ -199,7 +199,7 @@ function Dashboard() {
     const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
     const baseRevenue = kpis.totalRevenue / 30; // Approximate daily revenue
 
-    return days.map((day, index) => ({
+    return days.map((day) => ({
       day,
       revenue: Math.round(baseRevenue * (0.5 + Math.random() * 1.2)),
       target: Math.round(baseRevenue * 1.1),

@@ -156,6 +156,7 @@ const CompletedLabWorksTable: React.FC<CompletedLabWorksTableProps> = ({ patient
 
             const updates: Partial<PatientRecord> = {
                 ...formData,
+                invoice_status: formData.invoice_status === "" ? undefined : formData.invoice_status,
                 balance,
                 installments: localInstallments,
                 // Lock the price after first save if any payment info was entered
