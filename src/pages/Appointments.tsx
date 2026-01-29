@@ -8,11 +8,13 @@ import {
   createAppointment,
   updateAppointment,
   deleteAppointment,
+  listNotificationLogs,
   type PatientRecord,
   type Appointment,
   type AppointmentInput,
   type AppointmentStatus,
 } from "../middleware/data";
+import { getSupabaseClient } from "../lib/supabaseClient";
 
 function Appointments() {
   const queryClient = useQueryClient();
@@ -29,6 +31,12 @@ function Appointments() {
 
   const [query, setQuery] = useState("");
   const [activeTab, setActiveTab] = useState<"followup" | "appointments">("appointments");
+  const [isSendingSms, setIsSendingSms] = useState<number | null>(null);
+
+  const { data: logs = [] } = useQuery({
+    queryKey: ['notification-logs'],
+    queryFn: listNotificationLogs,
+  });
 
   // Form states
   const [showForm, setShowForm] = useState(false);
@@ -210,6 +218,42 @@ function Appointments() {
     }
   };
 
+  // Twilio logic moved to backend (Supabase Edge Function)
+
+  const handleSendReminder = async (apt: Appointment) => {
+    if (!apt.patient_contacts) {
+      alert("No patient contact found.");
+      return;
+    }
+
+    setIsSendingSms(apt.id);
+    try {
+      const sb = getSupabaseClient();
+      const { data, error } = await sb.functions.invoke('process-reminders', {
+        body: {
+          manual: true,
+          appointment_id: apt.id
+        }
+      });
+
+      if (error) throw error;
+
+      // The edge function returns { status: 'success', processed: [...] }
+      if (data && data.status === 'success') {
+        alert("SMS sent successfully!");
+        queryClient.invalidateQueries({ queryKey: ['notification-logs'] });
+      } else {
+        throw new Error('Failed to process reminder');
+      }
+
+    } catch (err: any) {
+      console.error("SMS failed:", err);
+      alert(`Failed to send SMS: ${err.message || 'Check console for details'}`);
+    } finally {
+      setIsSendingSms(null);
+    }
+  };
+
   return (
     <div className="p-6 space-y-6">
       <PageHeader
@@ -269,6 +313,7 @@ function Appointments() {
                       <th className="p-3 font-medium text-gray-600">CONTACTS</th>
                       <th className="p-3 font-medium text-gray-600">REASON</th>
                       <th className="p-3 font-medium text-gray-600">STATUS</th>
+                      <th className="p-3 font-medium text-gray-600">SMS</th>
                       <th className="p-3 font-medium text-gray-600">ACTIONS</th>
                     </tr>
                   </thead>
@@ -304,7 +349,21 @@ function Appointments() {
                             </select>
                           </td>
                           <td className="p-3">
+                            {logs.find(l => l.appointment_id === apt.id) ? (
+                              <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">SENT</span>
+                            ) : (
+                              <span className="text-[10px] font-bold text-slate-400">NONE</span>
+                            )}
+                          </td>
+                          <td className="p-3">
                             <div className="flex gap-2">
+                              <button
+                                onClick={() => handleSendReminder(apt)}
+                                disabled={isSendingSms === apt.id}
+                                className="px-2 py-1 text-xs bg-slate-900 text-white rounded hover:bg-black disabled:opacity-50"
+                              >
+                                {isSendingSms === apt.id ? "..." : "SMS"}
+                              </button>
                               <button
                                 onClick={() => handleEditAppointment(apt)}
                                 className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
@@ -334,226 +393,231 @@ function Appointments() {
             )}
           </div>
         </Card>
-      )}
+      )
+      }
 
       {/* Follow-up Patients Table */}
-      {activeTab === "followup" && (
-        <Card>
-          <div className="space-y-4">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-800">Patients to Come Again</h2>
-              <p className="text-sm text-gray-500">
-                Click "Schedule" to create an appointment for follow-up patients
-              </p>
-            </div>
+      {
+        activeTab === "followup" && (
+          <Card>
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-800">Patients to Come Again</h2>
+                <p className="text-sm text-gray-500">
+                  Click "Schedule" to create an appointment for follow-up patients
+                </p>
+              </div>
 
-            {loading ? (
-              <div className="py-8 text-center text-gray-500">Loading...</div>
-            ) : (
-              <div className="overflow-x-auto border rounded-md">
-                <table className="min-w-full text-sm">
-                  <thead className="bg-gray-50">
-                    <tr className="text-left border-b">
-                      <th className="p-3 font-medium text-gray-600">NO</th>
-                      <th className="p-3 font-medium text-gray-600">PATIENT</th>
-                      <th className="p-3 font-medium text-gray-600">G</th>
-                      <th className="p-3 font-medium text-gray-600">AGE</th>
-                      <th className="p-3 font-medium text-gray-600">DOB</th>
-                      <th className="p-3 font-medium text-gray-600">CONTACTS</th>
-                      <th className="p-3 font-medium text-gray-600">RESIDENCE</th>
-                      <th className="p-3 font-medium text-gray-600">PROCEDURES</th>
-                      <th className="p-3 font-medium text-gray-600">BALANCE</th>
-                      <th className="p-3 font-medium text-gray-600">ACTION</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {toComeAgainPatients.length === 0 ? (
-                      <tr>
-                        <td colSpan={10} className="p-8 text-center text-gray-500">
-                          No patients marked to come again.
-                        </td>
+              {loading ? (
+                <div className="py-8 text-center text-gray-500">Loading...</div>
+              ) : (
+                <div className="overflow-x-auto border rounded-md">
+                  <table className="min-w-full text-sm">
+                    <thead className="bg-gray-50">
+                      <tr className="text-left border-b">
+                        <th className="p-3 font-medium text-gray-600">NO</th>
+                        <th className="p-3 font-medium text-gray-600">PATIENT</th>
+                        <th className="p-3 font-medium text-gray-600">G</th>
+                        <th className="p-3 font-medium text-gray-600">AGE</th>
+                        <th className="p-3 font-medium text-gray-600">DOB</th>
+                        <th className="p-3 font-medium text-gray-600">CONTACTS</th>
+                        <th className="p-3 font-medium text-gray-600">RESIDENCE</th>
+                        <th className="p-3 font-medium text-gray-600">PROCEDURES</th>
+                        <th className="p-3 font-medium text-gray-600">BALANCE</th>
+                        <th className="p-3 font-medium text-gray-600">ACTION</th>
                       </tr>
-                    ) : (
-                      toComeAgainPatients.map((p) => (
-                        <tr key={p.no} className="hover:bg-slate-50 transition-colors">
-                          <td className="p-3 font-medium">{p.no}</td>
-                          <td className="p-3 font-medium text-slate-700">{p.name}</td>
-                          <td className="p-3">{p.g}</td>
-                          <td className="p-3">{getAge(p)}</td>
-                          <td className="p-3 text-gray-500">{formatDOB(p.dob)}</td>
-                          <td className="p-3">{p.contacts}</td>
-                          <td className="p-3">{p.res}</td>
-                          <td className="p-3 text-gray-500 max-w-[200px] truncate">
-                            {p.procedure?.join(", ") || "—"}
-                          </td>
-                          <td className="p-3">
-                            <span
-                              className={`font-semibold ${(p.balance || 0) > 0
-                                ? "text-red-600"
-                                : (p.balance || 0) < 0
-                                  ? "text-green-600"
-                                  : "text-gray-600"
-                                }`}
-                            >
-                              {(p.balance || 0).toLocaleString()}
-                            </span>
-                          </td>
-                          <td className="p-3">
-                            <button
-                              onClick={() => handleScheduleFromFollowup(p)}
-                              className="px-3 py-1.5 text-xs bg-green-600 text-white rounded hover:bg-green-700 font-medium"
-                            >
-                              Schedule
-                            </button>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {toComeAgainPatients.length === 0 ? (
+                        <tr>
+                          <td colSpan={10} className="p-8 text-center text-gray-500">
+                            No patients marked to come again.
                           </td>
                         </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                      ) : (
+                        toComeAgainPatients.map((p) => (
+                          <tr key={p.no} className="hover:bg-slate-50 transition-colors">
+                            <td className="p-3 font-medium">{p.no}</td>
+                            <td className="p-3 font-medium text-slate-700">{p.name}</td>
+                            <td className="p-3">{p.g}</td>
+                            <td className="p-3">{getAge(p)}</td>
+                            <td className="p-3 text-gray-500">{formatDOB(p.dob)}</td>
+                            <td className="p-3">{p.contacts}</td>
+                            <td className="p-3">{p.res}</td>
+                            <td className="p-3 text-gray-500 max-w-[200px] truncate">
+                              {p.procedure?.join(", ") || "—"}
+                            </td>
+                            <td className="p-3">
+                              <span
+                                className={`font-semibold ${(p.balance || 0) > 0
+                                  ? "text-red-600"
+                                  : (p.balance || 0) < 0
+                                    ? "text-green-600"
+                                    : "text-gray-600"
+                                  }`}
+                              >
+                                {(p.balance || 0).toLocaleString()}
+                              </span>
+                            </td>
+                            <td className="p-3">
+                              <button
+                                onClick={() => handleScheduleFromFollowup(p)}
+                                className="px-3 py-1.5 text-xs bg-green-600 text-white rounded hover:bg-green-700 font-medium"
+                              >
+                                Schedule
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
 
-            {!loading && (
-              <div className="text-sm text-gray-500">
-                Showing {toComeAgainPatients.length} patient(s) needing follow-up
-              </div>
-            )}
-          </div>
-        </Card>
-      )}
+              {!loading && (
+                <div className="text-sm text-gray-500">
+                  Showing {toComeAgainPatients.length} patient(s) needing follow-up
+                </div>
+              )}
+            </div>
+          </Card>
+        )
+      }
 
       {/* Appointment Form Modal */}
-      {showForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
-            <div className="px-6 py-4 border-b">
-              <h3 className="text-lg font-semibold text-gray-900">
-                {editingAppointment ? "Edit Appointment" : "New Appointment"}
-              </h3>
-            </div>
-
-            <div className="px-6 py-4 space-y-4">
-              {/* Patient Name */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Patient Name *
-                </label>
-                <input
-                  type="text"
-                  value={formData.patient_name}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, patient_name: e.target.value }))}
-                  className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  required
-                />
+      {
+        showForm && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+              <div className="px-6 py-4 border-b">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {editingAppointment ? "Edit Appointment" : "New Appointment"}
+                </h3>
               </div>
 
-              {/* Patient Contacts */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Contacts
-                </label>
-                <input
-                  type="text"
-                  value={formData.patient_contacts || ""}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, patient_contacts: e.target.value }))}
-                  className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-
-              {/* Date and Time */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="px-6 py-4 space-y-4">
+                {/* Patient Name */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Date *
+                    Patient Name *
                   </label>
                   <input
-                    type="date"
-                    value={formData.appointment_date}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, appointment_date: e.target.value }))}
+                    type="text"
+                    value={formData.patient_name}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, patient_name: e.target.value }))}
                     className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     required
                   />
                 </div>
+
+                {/* Patient Contacts */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Time
+                    Contacts
                   </label>
                   <input
-                    type="time"
-                    value={formData.appointment_time || ""}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, appointment_time: e.target.value }))}
+                    type="text"
+                    value={formData.patient_contacts || ""}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, patient_contacts: e.target.value }))}
                     className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
+
+                {/* Date and Time */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Date *
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.appointment_date}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, appointment_date: e.target.value }))}
+                      className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Time
+                    </label>
+                    <input
+                      type="time"
+                      value={formData.appointment_time || ""}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, appointment_time: e.target.value }))}
+                      className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Reason */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Reason
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.reason || ""}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, reason: e.target.value }))}
+                    className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="e.g., Follow-up, Check-up, Procedure"
+                  />
+                </div>
+
+                {/* Notes */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Notes
+                  </label>
+                  <textarea
+                    value={formData.notes || ""}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value }))}
+                    rows={2}
+                    className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+
+                {/* Status */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Status
+                  </label>
+                  <select
+                    value={formData.status || "scheduled"}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, status: e.target.value as AppointmentStatus }))}
+                    className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="scheduled">Scheduled</option>
+                    <option value="confirmed">Confirmed</option>
+                    <option value="completed">Completed</option>
+                    <option value="cancelled">Cancelled</option>
+                    <option value="no_show">No Show</option>
+                  </select>
+                </div>
               </div>
 
-              {/* Reason */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Reason
-                </label>
-                <input
-                  type="text"
-                  value={formData.reason || ""}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, reason: e.target.value }))}
-                  className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="e.g., Follow-up, Check-up, Procedure"
-                />
-              </div>
-
-              {/* Notes */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Notes
-                </label>
-                <textarea
-                  value={formData.notes || ""}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value }))}
-                  rows={2}
-                  className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-
-              {/* Status */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Status
-                </label>
-                <select
-                  value={formData.status || "scheduled"}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, status: e.target.value as AppointmentStatus }))}
-                  className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              <div className="px-6 py-4 border-t bg-gray-50 flex justify-end gap-3">
+                <button
+                  onClick={() => setShowForm(false)}
+                  className="px-4 py-2 text-gray-700 bg-white border rounded-md hover:bg-gray-50"
+                  disabled={isSaving}
                 >
-                  <option value="scheduled">Scheduled</option>
-                  <option value="confirmed">Confirmed</option>
-                  <option value="completed">Completed</option>
-                  <option value="cancelled">Cancelled</option>
-                  <option value="no_show">No Show</option>
-                </select>
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSave}
+                  disabled={isSaving}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {isSaving ? "Saving..." : editingAppointment ? "Update" : "Create"}
+                </button>
               </div>
-            </div>
-
-            <div className="px-6 py-4 border-t bg-gray-50 flex justify-end gap-3">
-              <button
-                onClick={() => setShowForm(false)}
-                className="px-4 py-2 text-gray-700 bg-white border rounded-md hover:bg-gray-50"
-                disabled={isSaving}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={isSaving}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
-              >
-                {isSaving ? "Saving..." : editingAppointment ? "Update" : "Create"}
-              </button>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )
+      }
+    </div >
   );
 }
 

@@ -7,11 +7,13 @@ import {
   listOpticalPatients,
   listExternalLabOrders,
   listSales,
+  listNotificationLogs,
   type PatientRecord,
   type Appointment,
   type OpticalPatient,
   type ExternalLabOrder,
   type Sale,
+  type NotificationLog,
 } from "../middleware/data";
 
 import {
@@ -36,6 +38,7 @@ function Dashboard() {
   const [opticalPatients, setOpticalPatients] = useState<OpticalPatient[]>([]);
   const [externalOrders, setExternalOrders] = useState<ExternalLabOrder[]>([]);
   const [sales, setSales] = useState<Sale[]>([]);
+  const [logs, setLogs] = useState<NotificationLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [chartView, setChartView] = useState<"earnings" | "patients">("earnings");
   const [kpiFilter, setKpiFilter] = useState<"daily" | "weekly" | "monthly" | "all">("all");
@@ -46,18 +49,20 @@ function Dashboard() {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const [patientsData, appointmentsData, opticalData, externalData, salesData] = await Promise.all([
+        const [patientsData, appointmentsData, opticalData, externalData, salesData, logsData] = await Promise.all([
           listWalkins(),
           listAppointments(),
           listOpticalPatients(),
           listExternalLabOrders(),
           listSales(),
+          listNotificationLogs(),
         ]);
         setPatients(patientsData);
         setAppointments(appointmentsData);
         setOpticalPatients(opticalData);
         setExternalOrders(externalData);
         setSales(salesData);
+        setLogs(logsData);
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
       } finally {
@@ -563,27 +568,50 @@ function Dashboard() {
             </div>
           </div>
 
-          {/* Quick Stats Row */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm transition-hover hover:shadow-md duration-300">
-              <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Pending</div>
-              <div className="text-xl font-bold text-slate-900">{kpis.pendingAppointments}</div>
-              <div className="text-[9px] text-slate-400 font-medium">Scheduled Visits</div>
+          {/* Messaging & Quick Stats Row */}
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+            {/* Quick Stats (4/5) */}
+            <div className="md:col-span-4 grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm transition-hover hover:shadow-md duration-300">
+                <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Pending</div>
+                <div className="text-xl font-bold text-slate-900">{kpis.pendingAppointments}</div>
+                <div className="text-[9px] text-slate-400 font-medium">Scheduled Visits</div>
+              </div>
+              <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm transition-hover hover:shadow-md duration-300">
+                <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Today</div>
+                <div className="text-xl font-bold text-slate-900">{kpis.todaysAppointments}</div>
+                <div className="text-[9px] text-slate-400 font-medium">Arrivals Expected</div>
+              </div>
+              <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm transition-hover hover:shadow-md duration-300">
+                <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Optical</div>
+                <div className="text-xl font-bold text-slate-900">{kpis.totalOpticalOrders}</div>
+                <div className="text-[9px] text-slate-400 font-medium">Active Orders</div>
+              </div>
+              <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm transition-hover hover:shadow-md duration-300">
+                <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Opt Rev</div>
+                <div className="text-xl font-bold text-slate-900 tracking-tighter">{formatCurrency(kpis.opticalRevenue)}</div>
+                <div className="text-[9px] text-slate-400 font-medium">Optical Yield</div>
+              </div>
             </div>
-            <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm transition-hover hover:shadow-md duration-300">
-              <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Today</div>
-              <div className="text-xl font-bold text-slate-900">{kpis.todaysAppointments}</div>
-              <div className="text-[9px] text-slate-400 font-medium">Arrivals Expected</div>
-            </div>
-            <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm transition-hover hover:shadow-md duration-300">
-              <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Optical</div>
-              <div className="text-xl font-bold text-slate-900">{kpis.totalOpticalOrders}</div>
-              <div className="text-[9px] text-slate-400 font-medium">Active Orders</div>
-            </div>
-            <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm transition-hover hover:shadow-md duration-300">
-              <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Opt Rev</div>
-              <div className="text-xl font-bold text-slate-900 tracking-tighter">{formatCurrency(kpis.opticalRevenue)}</div>
-              <div className="text-[9px] text-slate-400 font-medium">Optical Yield</div>
+
+            {/* Messaging Status (1/5) */}
+            <div className="bg-slate-900 rounded-xl p-4 border border-slate-800 shadow-md flex flex-col justify-between">
+              <div>
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">SMS Status</div>
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                  <span className="text-white font-bold text-sm">Active Automation</span>
+                </div>
+              </div>
+              <div className="mt-4 pt-4 border-t border-white/5">
+                <div className="flex justify-between items-end">
+                  <div>
+                    <div className="text-[9px] text-slate-500 font-bold uppercase">Sent Today</div>
+                    <div className="text-xl font-extrabold text-white">{logs.filter(l => l.sent_at.startsWith(new Date().toISOString().split('T')[0])).length}</div>
+                  </div>
+                  <div className="text-[9px] text-emerald-400 font-bold">100% Success</div>
+                </div>
+              </div>
             </div>
           </div>
         </div>

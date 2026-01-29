@@ -353,6 +353,34 @@ export async function deleteAppointment(id: number): Promise<boolean> {
 }
 
 // ============================================
+// NOTIFICATIONS
+// ============================================
+
+export interface NotificationLog {
+  id: string;
+  patient_no?: number;
+  appointment_id?: number;
+  type: string;
+  status: string;
+  sent_at: string;
+  phone_number: string;
+}
+
+export async function listNotificationLogs(): Promise<NotificationLog[]> {
+  const sb = getSupabaseClient();
+  const { data, error } = await sb
+    .from("notification_logs")
+    .select("*")
+    .order("sent_at", { ascending: false });
+
+  if (error) {
+    console.error("listNotificationLogs error:", error);
+    return [];
+  }
+  return data || [];
+}
+
+// ============================================
 // EXTERNAL LAB WORKS
 // ============================================
 
