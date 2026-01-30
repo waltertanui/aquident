@@ -1,6 +1,22 @@
 import { useState } from "react";
 import { NavLink } from "react-router-dom";
 import logo from "../assets/aquadent_logo.png";
+import {
+  LayoutDashboard,
+  Building2,
+  Stethoscope,
+  Calendar,
+  FlaskConical,
+  Glasses,
+  Package,
+  Users,
+  BadgeDollarSign,
+  BarChart3,
+  ChevronDown,
+  ChevronRight,
+  Menu,
+  ChevronLeft
+} from "lucide-react";
 
 const linkClass = "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-slate-200 hover:bg-slate-800 transition-all duration-200";
 const activeClass = "bg-slate-800 text-white";
@@ -37,10 +53,7 @@ function Sidebar() {
         </div>
         {!isCollapsed && (
           <button onClick={toggleSidebar} className="text-slate-500 hover:text-white transition-colors">
-            {/* Simple toggle icon */}
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M18.75 19.5l-7.5-7.5 7.5-7.5m-6 15L5.25 12l7.5-7.5" />
-            </svg>
+            <ChevronLeft className="w-5 h-5" />
           </button>
         )}
       </div>
@@ -49,31 +62,29 @@ function Sidebar() {
       {isCollapsed && (
         <div className="flex justify-center mb-4">
           <button onClick={toggleSidebar} className="text-slate-500 hover:text-white transition-colors">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 4.5l7.5 7.5-7.5 7.5m-6-15l7.5 7.5-7.5 7.5" />
-            </svg>
+            <Menu className="w-5 h-5" />
           </button>
         </div>
       )}
 
       <nav className="space-y-1 px-2">
         <NavLink to="/dashboard" className={({ isActive }) => `${linkClass} ${isActive ? activeClass : ""} ${isCollapsed ? 'justify-center' : ''}`} title={isCollapsed ? "Dashboard" : ""}>
-          <span className="text-lg">🏠</span>
+          <LayoutDashboard className="w-5 h-5" />
           {!isCollapsed && <span>Dashboard</span>}
         </NavLink>
 
         <NavLink to="/front-office" className={({ isActive }) => `${linkClass} ${isActive ? activeClass : ""} ${isCollapsed ? 'justify-center' : ''}`} title={isCollapsed ? "Front Office" : ""}>
-          <span className="text-lg">🏢</span>
+          <Building2 className="w-5 h-5" />
           {!isCollapsed && <span>Front Office</span>}
         </NavLink>
 
         <NavLink to="/clinic" className={({ isActive }) => `${linkClass} ${isActive ? activeClass : ""} ${isCollapsed ? 'justify-center' : ''}`} title={isCollapsed ? "Clinic" : ""}>
-          <span className="text-lg">⚕️</span>
+          <Stethoscope className="w-5 h-5" />
           {!isCollapsed && <span>Clinic</span>}
         </NavLink>
 
         <NavLink to="/appointments" className={({ isActive }) => `${linkClass} ${isActive ? activeClass : ""} ${isCollapsed ? 'justify-center' : ''}`} title={isCollapsed ? "Appointments" : ""}>
-          <span className="text-lg">📅</span>
+          <Calendar className="w-5 h-5" />
           {!isCollapsed && <span>Appointments</span>}
         </NavLink>
 
@@ -85,10 +96,10 @@ function Sidebar() {
             title={isCollapsed ? "Laboratory" : ""}
           >
             <div className={`flex items-center gap-3 ${isCollapsed ? 'justify-center' : ''}`}>
-              <span className="text-lg">🧪</span>
+              <FlaskConical className="w-5 h-5" />
               {!isCollapsed && <span>Laboratory</span>}
             </div>
-            {!isCollapsed && <span className="text-xs text-slate-400">{labOpen ? "▾" : "▸"}</span>}
+            {!isCollapsed && (labOpen ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />)}
           </button>
           {!isCollapsed && labOpen && (
             <div className="mt-1 space-y-1 pl-4">
@@ -103,12 +114,12 @@ function Sidebar() {
         </div>
 
         <NavLink to="/optical" className={({ isActive }) => `${linkClass} ${isActive ? activeClass : ""} ${isCollapsed ? 'justify-center' : ''}`} title={isCollapsed ? "Optical" : ""}>
-          <span className="text-lg">👓</span>
+          <Glasses className="w-5 h-5" />
           {!isCollapsed && <span>Optical</span>}
         </NavLink>
 
         <NavLink to="/inventory" className={({ isActive }) => `${linkClass} ${isActive ? activeClass : ""} ${isCollapsed ? 'justify-center' : ''}`} title={isCollapsed ? "Inventory" : ""}>
-          <span className="text-lg">📦</span>
+          <Package className="w-5 h-5" />
           {!isCollapsed && <span>Inventory</span>}
         </NavLink>
 
@@ -120,10 +131,10 @@ function Sidebar() {
             title={isCollapsed ? "Human Resources" : ""}
           >
             <div className={`flex items-center gap-3 ${isCollapsed ? 'justify-center' : ''}`}>
-              <span className="text-lg">👥</span>
+              <Users className="w-5 h-5" />
               {!isCollapsed && <span>Human Resources</span>}
             </div>
-            {!isCollapsed && <span className="text-xs text-slate-400">{hrOpen ? "▾" : "▸"}</span>}
+            {!isCollapsed && (hrOpen ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />)}
           </button>
           {!isCollapsed && hrOpen && (
             <div className="mt-1 space-y-1 pl-4">
@@ -148,10 +159,10 @@ function Sidebar() {
             title={isCollapsed ? "Sales & Billing" : ""}
           >
             <div className={`flex items-center gap-3 ${isCollapsed ? 'justify-center' : ''}`}>
-              <span className="text-lg">💰</span>
+              <BadgeDollarSign className="w-5 h-5" />
               {!isCollapsed && <span>Sales & Billing</span>}
             </div>
-            {!isCollapsed && <span className="text-xs text-slate-400">{salesOpen ? "▾" : "▸"}</span>}
+            {!isCollapsed && (salesOpen ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />)}
           </button>
           {!isCollapsed && salesOpen && (
             <div className="mt-1 space-y-1 pl-4">
@@ -173,10 +184,10 @@ function Sidebar() {
             title={isCollapsed ? "Daily Reports" : ""}
           >
             <div className={`flex items-center gap-3 ${isCollapsed ? 'justify-center' : ''}`}>
-              <span className="text-lg">📊</span>
+              <BarChart3 className="w-5 h-5" />
               {!isCollapsed && <span>Daily Reports</span>}
             </div>
-            {!isCollapsed && <span className="text-xs text-slate-400">{reportsOpen ? "▾" : "▸"}</span>}
+            {!isCollapsed && (reportsOpen ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />)}
           </button>
           {!isCollapsed && reportsOpen && (
             <div className="mt-1 space-y-1 pl-4">

@@ -350,8 +350,8 @@ const CompletedLabWorksTable: React.FC<CompletedLabWorksTableProps> = ({ patient
                         <div class="info-row"><span class="info-label">Voucher Bt.:</span> <span class="info-value">${printDate}</span></div>
                         <div class="info-row"><span class="info-label">Ks No.:</span> <span class="info-value">${ngNo}</span></div>
                         <div class="info-row"><span class="info-label">Name:</span> <span class="info-value">${p.name?.toUpperCase()}</span></div>
-                        <div class="info-row"><span class="info-label">Ref.By:</span> <span class="info-value">${p.doc_name || 'DOCTOR'}</span></div>
-                        <div class="info-row"><span class="info-label">Pre.Dbc.:</span> <span class="info-value">${p.doc_name || 'DOCTOR'}</span></div>
+                        <div class="info-row"><span class="info-label">Ref.By:</span> <span class="info-value">Paul Wange Ongeti</span></div>
+                        <div class="info-row"><span class="info-label">Pre.Dbc.:</span> <span class="info-value">Paul Wange Ongeti</span></div>
                         <div class="info-row"><span class="info-label">Srcl.:</span> <span class="info-value">Aquadent Dental Center OPD</span></div>
                         <div class="info-row"><span class="info-label">Pat. Typ:</span> <span class="info-value">CREDIT</span></div>
                         <div class="info-row"><span class="info-label">Order No:</span> <span class="info-value">${ngNo}</span></div>

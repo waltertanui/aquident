@@ -181,7 +181,7 @@ function Sales() {
                             <img src="${logo}" class="logo-img" alt="Logo" />
                         </div>
                         <div class="company-info">
-                            <div class="company-name">AQUADENT COMPANY LIMITED</div>
+                            <div class="company-name">AQUADENT SALES</div>
                             <div class="company-tagline" style="font-style: italic; font-size: 12px; margin-bottom: 5px;">Restore Your Smile</div>
                             <div class="company-details">
                                 Sagaas Business Centre, 2nd Floor, Nandi Road<br>
@@ -200,8 +200,8 @@ function Sales() {
                             <div class="row"><span class="label">Voucher Bt.:</span><span class="value">${date}</span></div>
                             <div class="row"><span class="label">Ks No.:</span><span class="value">${refNo}</span></div>
                             <div class="row"><span class="label">Name:</span><span class="value">${data.customer_name.toUpperCase()}</span></div>
-                            <div class="row"><span class="label">Ref.By:</span><span class="value">Dr. Lee</span></div>
-                            <div class="row"><span class="label">Pre.Dbc.:</span><span class="value">Dr. Lee</span></div>
+                            <div class="row"><span class="label">Ref.By:</span><span class="value">Paul Wange Ongeti</span></div>
+                            <div class="row"><span class="label">Pre.Dbc.:</span><span class="value">Paul Wange Ongeti</span></div>
                             <div class="row"><span class="label">Srcl.:</span><span class="value">Aquadent Dental Center OPD</span></div>
                             <div class="row"><span class="label">Pat. Typ:</span><span class="value">${type === 'quote' ? 'QUOTE' : 'CREDIT'}</span></div>
                             <div class="row"><span class="label">Order No:</span><span class="value">${refNo}</span></div>
